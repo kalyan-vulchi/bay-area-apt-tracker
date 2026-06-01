@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bay Area Apartment Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map { height: 100%; min-height: 400px; }
+    .apt-card { transition: box-shadow 0.15s, transform 0.12s; }
+    .apt-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
+    .apt-card.highlighted { outline: 2px solid #3b82f6; }
+    .qualifies    { border-left: 4px solid #22c55e; }
+    .missing-pref { border-left: 4px solid #f59e0b; }
+    .missing-req  { border-left: 4px solid #ef4444; }
+    .corpus-card  { border-left: 4px solid #8b5cf6; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    .modal-bg { backdrop-filter: blur(2px); }
+    @keyframes slideIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+    .animate-in { animation: slideIn 0.18s ease-out; }
+    details > summary { list-style: none; cursor: pointer; user-select: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    .chevron { display: inline-block; transition: transform 0.15s; }
+    details[open] .chevron { transform: rotate(90deg); }
+    .amenity-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; border: 1px solid; }
+    .plan-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+  <div class="px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">BA</div>
+      <div>
+        <h1 class="text-sm font-bold text-gray-900 leading-tight">Bay Area Apartment Tracker</h1>
+        <p class="text-xs text-gray-400">1 Bed · 1 Bath · South Bay · Budget $3,400</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="hidden lg:flex items-center gap-3 text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg">
+        <span>Office: 1375 Crossman Ave, Sunnyvale</span>
+        <span class="text-gray-200">|</span>
+        <span>Max: $3,400/mo</span>
+        <span class="text-gray-200">|</span>
+        <span>Commute: 30 min Thu 9am</span>
+      </div>
+      <button onclick="exportCSV()" class="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">Export CSV</button>
+      <button onclick="openModal()" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">+ Add</button>
+    </div>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="bg-white border-b border-gray-100">
+  <div class="px-4 py-2.5 grid grid-cols-3 sm:grid-cols-6 gap-2">
+    <div class="bg-gray-50 rounded-xl p-2.5 text-center">
+      <div id="stat-total" class="text-lg font-bold text-gray-800">0</div>
+      <div class="text-xs text-gray-400">Total</div>
+    </div>
+    <div class="bg-green-50 rounded-xl p-2.5 text-center">
+      <div id="stat-qualifies" class="text-lg font-bold text-green-600">0</div>
+      <div class="text-xs text-gray-400">Qualify</div>
+    </div>
+    <div class="bg-blue-50 rounded-xl p-2.5 text-center">
+      <div id="stat-avg-rent" class="text-lg font-bold text-blue-600">—</div>
+      <div class="text-xs text-gray-400">Avg Rent</div>
+    </div>
+    <div class="hidden sm:block bg-purple-50 rounded-xl p-2.5 text-center">
+      <div id="stat-best-commute" class="text-lg font-bold text-purple-600">—</div>
+      <div class="text-xs text-gray-400">Best Commute</div>
+    </div>
+    <div class="hidden sm:block bg-orange-50 rounded-xl p-2.5 text-center">
+      <div id="stat-active" class="text-lg font-bold text-orange-500">0</div>
+      <div class="text-xs text-gray-400">Active</div>
+    </div>
+    <div class="hidden sm:block bg-amber-50 rounded-xl p-2.5 text-center">
+      <div id="stat-promos" class="text-lg font-bold text-amber-600">0</div>
+      <div class="text-xs text-gray-400">Promos</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+  <button id="tab-shortlist" onclick="setTab('shortlist')"
+    class="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full bg-blue-600 text-white transition">
+    Shortlist
+    <span id="tab-shortlist-count" class="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">0</span>
+  </button>
+  <button id="tab-corpus" onclick="setTab('corpus')"
+    class="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+    Corpus
+    <span id="tab-corpus-count" class="bg-gray-300 text-gray-700 text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">0</span>
+  </button>
+  <span id="tab-desc" class="ml-2 text-xs text-gray-400">Your researched apartments</span>
+</div>
+
+<!-- FILTER BAR -->
+<div class="bg-white border-b border-gray-200 px-4 py-2 flex flex-wrap gap-2 items-center sticky top-[57px] z-30">
+  <input id="search-input" type="text" placeholder="Search name or address..." oninput="applyFilters()"
+    class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48" />
+  <select id="filter-status" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <option value="all">All Statuses</option>
+    <option value="not_visited">Not Visited</option>
+    <option value="scheduled">Scheduled</option>
+    <option value="toured">Toured</option>
+    <option value="applied">Applied</option>
+    <option value="waitlisted">Waitlisted</option>
+    <option value="rejected">Rejected</option>
+  </select>
+  <select id="filter-criteria" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <option value="all">All</option>
+    <option value="qualifies">Qualifies (all required)</option>
+    <option value="missing_dealbreaker">Missing Deal-breaker</option>
+    <option value="over_budget">Over Budget</option>
+    <option value="commute_ok">Commute &le; 30 min</option>
+    <option value="has_promo">Has Promotion</option>
+    <option value="avail_soon">Available &le; 30 days</option>
+  </select>
+  <select id="sort-by" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <option value="score_desc">Best Match</option>
+    <option value="rent_asc">Rent (low to high)</option>
+    <option value="rent_desc">Rent (high to low)</option>
+    <option value="commute_asc">Commute (shortest)</option>
+    <option value="avail_asc">Available (soonest)</option>
+    <option value="date_desc">Newest Added</option>
+  </select>
+  <button onclick="clearFilters()" class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">Clear</button>
+  <div class="ml-auto flex border border-gray-200 rounded-lg overflow-hidden text-xs">
+    <button id="btn-list"  onclick="setView('list')"  class="px-3 py-1.5 bg-blue-600 text-white">List</button>
+    <button id="btn-split" onclick="setView('split')" class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Split</button>
+    <button id="btn-map"   onclick="setView('map')"   class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Map</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-content" class="flex overflow-hidden" style="height:calc(100vh - 218px)">
+  <div id="list-panel" class="w-full overflow-y-auto p-4">
+    <div id="apartments-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+    <div id="empty-state" class="hidden text-center py-20">
+      <p class="text-base font-medium text-gray-500">No apartments yet</p>
+      <p class="text-sm text-gray-400 mt-1">Click <strong>+ Add</strong> to get started.</p>
+    </div>
+    <div id="no-results" class="hidden text-center py-16 text-gray-400">
+      <p>No apartments match your filters.</p>
+      <button onclick="clearFilters()" class="mt-2 text-sm text-blue-500 hover:underline">Clear filters</button>
+    </div>
+  </div>
+  <div id="map-panel" class="hidden border-l border-gray-200 flex-shrink-0">
+    <div id="map" class="w-full h-full"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-bg bg-black/40 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h2 id="modal-title" class="text-base font-bold text-gray-900">Add Apartment</h2>
+      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Building Name *</label>
+          <input id="f-name" type="text" placeholder="The Montclaire" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Listing URL</label>
+          <input id="f-url" type="url" placeholder="https://..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Full Address *</label>
+        <div class="flex gap-2">
+          <input id="f-address" type="text" placeholder="123 Main St, Sunnyvale, CA 94086" oninput="updateMapsLink()" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button onclick="geocodeFormAddress()" id="geocode-btn" class="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition whitespace-nowrap">Pin</button>
+        </div>
+        <p id="geocode-status" class="text-xs text-gray-400 mt-1 h-4"></p>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rent/mo ($) *</label>
+          <input id="f-rent" type="number" placeholder="2900" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Sqft</label>
+          <input id="f-sqft" type="number" placeholder="700" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Available</label>
+          <input id="f-available" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+            Commute (min) · Thu 9am
+            <a id="maps-link" href="#" target="_blank" class="ml-1 font-normal text-blue-500 normal-case hover:underline">Check Maps</a>
+          </label>
+          <input id="f-commute" type="number" placeholder="e.g. 18" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+            Est. Utilities ($)
+            <span title="Typical 1BR South Bay: ~$150–280/mo" class="font-normal text-gray-400 cursor-help">?</span>
+          </label>
+          <input id="f-utilities" type="number" placeholder="160" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Amenities</label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <label id="lbl-wd" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+            <input id="f-wd" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-wd','lbl-wd')">
+            <span class="text-sm"><span class="block font-medium text-gray-800">In-unit W/D</span><span class="text-xs text-red-500">Required</span></span>
+          </label>
+          <label id="lbl-ac" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+            <input id="f-ac" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-ac','lbl-ac')">
+            <span class="text-sm"><span class="block font-medium text-gray-800">AC</span><span class="text-xs text-red-500">Required</span></span>
+          </label>
+          <label id="lbl-parking" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+            <input id="f-parking" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-parking','lbl-parking')">
+            <span class="text-sm"><span class="block font-medium text-gray-800">Free Parking</span><span class="text-xs text-red-500">Required</span></span>
+          </label>
+          <label id="lbl-hardwood" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+            <input id="f-hardwood" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-hardwood','lbl-hardwood')">
+            <span class="text-sm"><span class="block font-medium text-gray-800">Hardwood</span><span class="text-xs text-gray-400">Preferred</span></span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Visit Status</label>
+        <div class="flex flex-wrap gap-2">
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-full cursor-pointer text-xs hover:bg-gray-50 select-none"><input type="radio" name="f-status" value="not_visited" checked class="accent-gray-400"> Not Visited</label>
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-blue-300 rounded-full cursor-pointer text-xs hover:bg-blue-50 select-none"><input type="radio" name="f-status" value="scheduled" class="accent-blue-500"> Scheduled</label>
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-purple-300 rounded-full cursor-pointer text-xs hover:bg-purple-50 select-none"><input type="radio" name="f-status" value="toured" class="accent-purple-500"> Toured</label>
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-yellow-400 rounded-full cursor-pointer text-xs hover:bg-yellow-50 select-none"><input type="radio" name="f-status" value="applied" class="accent-yellow-500"> Applied</label>
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-orange-300 rounded-full cursor-pointer text-xs hover:bg-orange-50 select-none"><input type="radio" name="f-status" value="waitlisted" class="accent-orange-500"> Waitlisted</label>
+          <label class="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 rounded-full cursor-pointer text-xs hover:bg-red-50 select-none"><input type="radio" name="f-status" value="rejected" class="accent-red-500"> Rejected</label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Notes</label>
+        <textarea id="f-notes" rows="3" placeholder="Pros/cons, parking details, tour impressions..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+      </div>
+    </div>
+    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+      <p id="form-error" class="text-sm text-red-500"></p>
+      <div class="flex gap-2">
+        <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button onclick="submitForm()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-xl">
+  <span id="toast-msg"></span>
+</div>
+
+<!-- MAP LEGEND -->
+<div id="map-legend" class="hidden fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 space-y-1">
+  <p class="font-semibold text-gray-700 mb-1">Legend</p>
+  <p><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1.5"></span>Qualifies</p>
+  <p><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1.5"></span>Missing deal-breaker</p>
+  <p><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-1.5"></span>Over budget / commute</p>
+  <p><span class="inline-block w-3 h-3 rounded-full bg-violet-500 mr-1.5"></span>Corpus</p>
+  <p><span class="inline-block w-3 h-3 rounded-full bg-blue-600 mr-1.5"></span>Office</p>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════
+const OFFICE_ADDRESS = '1375 Crossman Ave, Sunnyvale, CA 94089';
+const OFFICE = { lat: 37.3957, lng: -121.9986 };
+const MAX_RENT = 3400;
+const MAX_COMMUTE = 30;
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+let apartments = [];
+let mapInst = null, mapMarkers = {}, officeMarker = null;
+let editingId = null, currentView = 'list', formCoords = { lat: null, lng: null };
+let activeTab = 'shortlist';
+
+// ═══════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════
+function loadData() {
+  try {
+    const raw = localStorage.getItem('kalyan_bay_apts_v2');
+    if (raw) {
+      apartments = JSON.parse(raw);
+      apartments.forEach(a => {
+        if (!a.list) a.list = 'shortlist';
+        if (!a.plans) a.plans = [];
+      });
+    }
+  } catch (_) { apartments = []; }
+}
+function saveData() {
+  localStorage.setItem('kalyan_bay_apts_v2', JSON.stringify(apartments));
+}
+
+// ═══════════════════════════════════
+// SCORING
+// ═══════════════════════════════════
+function score(apt) {
+  const missingReq = [], missingPref = [];
+  if (!apt.has_wd)                              missingReq.push('In-unit W/D');
+  if (!apt.has_ac)                              missingReq.push('AC');
+  if (!apt.has_parking)                         missingReq.push('Free Parking');
+  if (apt.rent && apt.rent > MAX_RENT)          missingReq.push('Over budget ($' + apt.rent.toLocaleString() + ')');
+  if (apt.commute && apt.commute > MAX_COMMUTE) missingReq.push(apt.commute + ' min commute');
+  if (!apt.has_hardwood)                        missingPref.push('Hardwood');
+  const qualifies = missingReq.length === 0;
+  let pts = 0;
+  if (apt.has_wd)      pts += 25;
+  if (apt.has_ac)      pts += 25;
+  if (apt.has_parking) pts += 20;
+  if (apt.rent && apt.rent <= MAX_RENT) pts += 10;
+  if (apt.commute && apt.commute <= MAX_COMMUTE) pts += 10;
+  else if (!apt.commute) pts += 5;
+  if (apt.has_hardwood) pts += 10;
+  if (apt.rent && apt.rent <= MAX_RENT) pts += Math.min(5, Math.floor((MAX_RENT - apt.rent) / 100));
+  return { qualifies, missingReq, missingPref, pts: Math.min(100, pts) };
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+function setTab(tab) {
+  activeTab = tab;
+  const ON  = 'flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full bg-blue-600 text-white transition';
+  const OFF = 'flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition';
+  ['shortlist','corpus'].forEach(t => {
+    const btn = get('tab-' + t); if (btn) btn.className = t === tab ? ON : OFF;
+    const cnt = get('tab-' + t + '-count');
+    if (cnt) cnt.className = t === tab
+      ? 'bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center'
+      : 'bg-gray-300 text-gray-700 text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center';
+  });
+  const desc = get('tab-desc');
+  if (desc) desc.textContent = tab === 'shortlist'
+    ? 'Your personally researched apartments'
+    : 'Apartments found online — not yet personally reviewed';
+  renderStats(); applyFilters();
+  if (mapInst) renderMapMarkers();
+}
+
+// ═══════════════════════════════════
+// STATS
+// ═══════════════════════════════════
+function renderStats() {
+  const all = apartments.filter(a => a.list === activeTab);
+  const qual = all.filter(a => score(a).qualifies).length;
+  const rents = all.map(a => a.rent).filter(Boolean);
+  const avg = rents.length ? Math.round(rents.reduce((s, r) => s + r, 0) / rents.length) : null;
+  const commutes = all.map(a => a.commute).filter(Boolean);
+  const bestC = commutes.length ? Math.min(...commutes) : null;
+  const active = all.filter(a => ['scheduled','toured','applied','waitlisted'].includes(a.status)).length;
+  const promos = all.filter(a => a.promo).length;
+
+  set('tab-shortlist-count', apartments.filter(a => a.list === 'shortlist').length);
+  set('tab-corpus-count', apartments.filter(a => a.list === 'corpus').length);
+  set('stat-total', all.length);
+  set('stat-qualifies', qual);
+  set('stat-avg-rent', avg ? '$' + avg.toLocaleString() : '—');
+  set('stat-best-commute', bestC ? bestC + ' min' : '—');
+  set('stat-active', active);
+  set('stat-promos', promos);
+}
+
+// ═══════════════════════════════════
+// FILTER + SORT
+// ═══════════════════════════════════
+function applyFilters() {
+  const q   = get('search-input').value.toLowerCase();
+  const st  = get('filter-status').value;
+  const cr  = get('filter-criteria').value;
+  const srt = get('sort-by').value;
+  const now = new Date();
+
+  let list = apartments.filter(a => {
+    if (a.list !== activeTab) return false;
+    if (q && !a.name.toLowerCase().includes(q) && !(a.address||'').toLowerCase().includes(q)) return false;
+    if (st !== 'all' && a.status !== st) return false;
+    const s = score(a);
+    if (cr === 'qualifies'           && !s.qualifies) return false;
+    if (cr === 'missing_dealbreaker' && a.has_wd && a.has_ac && a.has_parking) return false;
+    if (cr === 'over_budget'         && (!a.rent || a.rent <= MAX_RENT)) return false;
+    if (cr === 'commute_ok'          && (!a.commute || a.commute > MAX_COMMUTE)) return false;
+    if (cr === 'has_promo'           && !a.promo) return false;
+    if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    const sa = score(a), sb = score(b);
+    switch (srt) {
+      case 'score_desc':  return sb.pts - sa.pts;
+      case 'rent_asc':    return (a.rent || 9999) - (b.rent || 9999);
+      case 'rent_desc':   return (b.rent || 0) - (a.rent || 0);
+      case 'commute_asc': return (a.commute || 999) - (b.commute || 999);
+      case 'avail_asc':   return (a.available ? new Date(a.available) : new Date('2099-01-01')) - (b.available ? new Date(b.available) : new Date('2099-01-01'));
+      case 'date_desc':   return new Date(b.added) - new Date(a.added);
+      default: return 0;
+    }
+  });
+
+  renderList(list); renderMapMarkers();
+}
+
+// ═══════════════════════════════════
+// RENDER CARDS
+// ═══════════════════════════════════
+const STATUS_STYLE = {
+  not_visited: 'bg-gray-100 text-gray-500',
+  scheduled:   'bg-blue-100 text-blue-700',
+  toured:      'bg-purple-100 text-purple-700',
+  applied:     'bg-yellow-100 text-yellow-700',
+  rejected:    'bg-red-100 text-red-600',
+  waitlisted:  'bg-orange-100 text-orange-700',
+};
+const STATUS_LABEL = {
+  not_visited:'Not Visited', scheduled:'Scheduled', toured:'Toured',
+  applied:'Applied', rejected:'Rejected', waitlisted:'Waitlisted',
+};
+
+function renderList(list) {
+  const container = get('apartments-list');
+  const empty = get('empty-state');
+  const noRes = get('no-results');
+  empty.classList.add('hidden'); noRes.classList.add('hidden');
+  if (apartments.length === 0) { container.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  if (list.length === 0)       { container.innerHTML = ''; noRes.classList.remove('hidden'); return; }
+  container.innerHTML = list.map(apt => card(apt)).join('');
+}
+
+function amenityBadge(val, label, req) {
+  if (val === true)  return `<span class="amenity-badge bg-green-50 border-green-200 text-green-700">&#10003; ${label}</span>`;
+  if (val === null)  return `<span class="amenity-badge bg-yellow-50 border-yellow-200 text-yellow-700">? ${label}</span>`;
+  if (req)           return `<span class="amenity-badge bg-red-50 border-red-200 text-red-600">&#10007; ${label}</span>`;
+  return             `<span class="amenity-badge bg-gray-50 border-gray-200 text-gray-400">&#10007; ${label}</span>`;
+}
+
+function card(apt) {
+  const s = score(apt);
+  const isCorpus = apt.list === 'corpus';
+
+  const border = isCorpus ? 'corpus-card' :
+                 s.qualifies ? 'qualifies' :
+                 (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? 'missing-req' : 'missing-pref';
+
+  const rentClr = !apt.rent ? 'text-gray-400' :
+                  apt.rent <= MAX_RENT ? 'text-green-700' : 'text-red-600';
+  const comClr  = !apt.commute ? 'text-gray-400' :
+                  apt.commute <= MAX_COMMUTE ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
+  const scoreClr = s.pts >= 80 ? 'bg-green-100 text-green-700' :
+                   s.pts >= 55 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600';
+  const total = (apt.rent || 0) + (apt.utilities || 0);
+
+  const now = new Date();
+  const availDate = apt.available ? new Date(apt.available + 'T12:00:00') : null;
+  const availPast = availDate && availDate < now;
+  const availSoon = availDate && !availPast && (availDate - now) / 86400000 <= 14;
+  const availBadgeClr = availPast ? 'bg-gray-100 text-gray-400 border-gray-200' :
+                        availSoon ? 'bg-green-100 text-green-700 border-green-200' :
+                                    'bg-blue-50 text-blue-600 border-blue-100';
+
+  const mapsUrl = apt.address
+    ? `https://www.google.com/maps/dir/${enc(apt.address)}/${enc(OFFICE_ADDRESS)}/@,12z/data=!4m2!4m1!3e0`
+    : '#';
+
+  const listingBtn = apt.url && !apt.url.includes('google.com/maps/place')
+    ? `<a href="${esc(apt.url)}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition font-medium">&#8599; Listing</a>`
+    : '';
+
+  const plansHtml = apt.plans && apt.plans.length > 1 ? `
+    <details class="mt-2.5 border border-gray-100 rounded-lg overflow-hidden">
+      <summary class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition bg-gray-50">
+        <span class="chevron text-gray-400">&#9654;</span>
+        ${apt.plans.length} floor plans
+      </summary>
+      <div class="divide-y divide-gray-100">
+        ${apt.plans.map(p => {
+          const pc = p.rent <= MAX_RENT ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
+          const pd = p.available ? new Date(p.available + 'T12:00:00') : null;
+          const pdPast = pd && pd < now;
+          const pdClr = pdPast ? 'text-gray-400' : pd && (pd - now)/86400000 <= 14 ? 'text-green-600' : 'text-blue-600';
+          return `<div class="plan-row">
+            <span class="font-medium text-gray-700">${esc(p.label)} &middot; ${p.sqft} sqft</span>
+            <div class="flex items-center gap-3">
+              <span class="${pc}">$${p.rent.toLocaleString()}/mo</span>
+              ${p.available ? `<span class="${pdClr} text-xs">${pdPast ? '(passed) ' : ''}${fmtDate(p.available)}</span>` : '<span class="text-gray-400 text-xs">TBD</span>'}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </details>` : '';
+
+  const notesHtml = apt.notes ? `
+    <details class="mt-2.5">
+      <summary class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition">
+        <span class="chevron">&#9654;</span> Notes
+      </summary>
+      <p class="mt-1.5 text-xs text-gray-500 leading-relaxed bg-gray-50 rounded-lg px-3 py-2 italic">${esc(apt.notes)}</p>
+    </details>` : '';
+
+  const actions = isCorpus
+    ? `<button onclick="moveToShortlist('${apt.id}')" class="px-3 py-1.5 text-xs text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition font-medium border border-purple-200">+ Shortlist</button>`
+    : `<div class="flex gap-1.5">
+         ${listingBtn}
+         <button onclick="openModal('${apt.id}')" class="px-2.5 py-1.5 text-xs text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Edit</button>
+         <button onclick="deleteApt('${apt.id}')" class="px-2.5 py-1.5 text-xs text-red-500 bg-red-50 rounded-lg hover:bg-red-100 transition">Delete</button>
+       </div>`;
+
+  return `
+  <div class="apt-card bg-white rounded-xl shadow-sm border border-gray-100 ${border} p-4 animate-in" data-id="${apt.id}">
+
+    <!-- Badge row -->
+    <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+      <span class="px-2 py-0.5 text-xs rounded-full font-medium ${STATUS_STYLE[apt.status] || STATUS_STYLE.not_visited}">${STATUS_LABEL[apt.status] || 'Not Visited'}</span>
+      <span class="px-2 py-0.5 text-xs rounded-full font-bold ${scoreClr}">${s.pts}/100</span>
+      ${isCorpus ? '<span class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Web search</span>' : ''}
+      ${apt.promo ? `<span class="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 font-semibold border border-amber-200">${esc(apt.promo)}</span>` : ''}
+    </div>
+
+    <!-- Name + Rent -->
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div class="min-w-0 flex-1">
+        <h3 class="text-sm font-bold text-gray-900 leading-snug">${esc(apt.name)}</h3>
+        <p class="text-xs text-gray-400 truncate mt-0.5">${esc(apt.address)}</p>
+      </div>
+      <div class="text-right flex-shrink-0 ml-2">
+        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + apt.rent.toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
+        <div class="text-xs text-gray-500 font-medium mt-0.5">1BR &middot; 1BA${apt.sqft ? ' &middot; ' + apt.sqft + ' sqft' : ''}</div>
+        ${apt.available ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border font-medium ${availBadgeClr}">Avail: ${fmtDate(apt.available)}</div>` : ''}
+        ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
+      </div>
+    </div>
+
+    <!-- Amenities -->
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      ${amenityBadge(apt.has_wd,      'W/D',     true)}
+      ${amenityBadge(apt.has_ac,      'AC',      true)}
+      ${amenityBadge(apt.has_parking, 'Parking', true)}
+      ${amenityBadge(apt.has_hardwood,'Hardwood',false)}
+    </div>
+
+    <!-- Commute -->
+    <div class="flex items-center gap-2 text-xs mb-2.5">
+      <span class="font-medium ${comClr}">${apt.commute ? apt.commute + ' min commute' : 'Commute TBD'}</span>
+      <span class="text-gray-200">&bull;</span>
+      <a href="${mapsUrl}" target="_blank" class="text-blue-400 hover:underline">Thu 9am check</a>
+    </div>
+
+    <!-- Missing requirements -->
+    ${s.missingReq.length ? `
+    <div class="mb-2.5 px-2.5 py-1.5 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 leading-relaxed">
+      Missing: ${s.missingReq.join(' &middot; ')}
+    </div>` : ''}
+
+    <!-- Plans accordion -->
+    ${plansHtml}
+
+    <!-- Notes (collapsed) -->
+    ${notesHtml}
+
+    <!-- Actions -->
+    <div class="flex items-center justify-between pt-2.5 mt-2.5 border-t border-gray-50">
+      <span class="text-xs text-gray-300">${apt.added ? fmtDate(apt.added) : ''}</span>
+      ${actions}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════
+// MAP
+// ═══════════════════════════════════
+function initMap() {
+  if (mapInst) return;
+  mapInst = L.map('map').setView([OFFICE.lat, OFFICE.lng], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 18
+  }).addTo(mapInst);
+  L.circle([OFFICE.lat, OFFICE.lng], {
+    radius: 16000, color: '#3b82f6', fillColor: '#3b82f6',
+    fillOpacity: 0.04, weight: 1.5, dashArray: '6 4'
+  }).addTo(mapInst).bindTooltip('~30 min drive radius (approx.)', { sticky: true });
+  const officeIcon = L.divIcon({
+    className: '',
+    html: `<div style="background:#1d4ed8;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">Office</div>`,
+    iconAnchor: [35, 12]
+  });
+  officeMarker = L.marker([OFFICE.lat, OFFICE.lng], { icon: officeIcon })
+    .addTo(mapInst).bindPopup('<b>Your Office</b><br>1375 Crossman Ave, Sunnyvale');
+  renderMapMarkers();
+}
+
+function renderMapMarkers() {
+  if (!mapInst) return;
+  Object.values(mapMarkers).forEach(m => mapInst.removeLayer(m));
+  mapMarkers = {};
+  apartments.filter(a => a.list === activeTab && a.lat && a.lng).forEach(apt => {
+    const s = score(apt);
+    const col = apt.list === 'corpus' ? '#8b5cf6' :
+                s.qualifies ? '#22c55e' :
+                (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? '#ef4444' : '#f59e0b';
+    const label = apt.rent ? '$' + Math.round(apt.rent / 100) : '?';
+    const icon = L.divIcon({
+      className: '',
+      html: `<div onclick="highlightCard('${apt.id}')" style="background:${col};color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer">${label}</div>`,
+      iconSize: [30, 30], iconAnchor: [15, 15]
+    });
+    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${apt.rent<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? apt.rent.toLocaleString() : '—'}/mo</span> &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min commute' : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
+    mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon }).addTo(mapInst).bindPopup(popup);
+  });
+}
+
+function highlightCard(id) {
+  document.querySelectorAll('.apt-card').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`.apt-card[data-id="${id}"]`);
+  if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+// ═══════════════════════════════════
+// GEOCODING
+// ═══════════════════════════════════
+async function geocodeAddress(addr) {
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
+    const data = await resp.json();
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch (_) {}
+  return null;
+}
+
+async function geocodeFormAddress() {
+  const addr = get('f-address').value.trim();
+  if (!addr) { toast('Enter an address first'); return; }
+  const btn = get('geocode-btn'), st = get('geocode-status');
+  btn.textContent = '...'; btn.disabled = true;
+  st.textContent = 'Searching...'; st.className = 'text-xs text-gray-400 mt-1 h-4';
+  const c = await geocodeAddress(addr);
+  btn.textContent = 'Pin'; btn.disabled = false;
+  if (c) {
+    formCoords = c;
+    st.textContent = `Pinned at ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`;
+    st.className = 'text-xs text-green-600 mt-1 h-4';
+  } else {
+    formCoords = { lat: null, lng: null };
+    st.textContent = 'Could not locate address';
+    st.className = 'text-xs text-orange-500 mt-1 h-4';
+  }
+}
+
+function updateMapsLink() {
+  const addr = get('f-address').value.trim();
+  if (addr) get('maps-link').href = `https://www.google.com/maps/dir/${enc(addr)}/${enc(OFFICE_ADDRESS)}/@,12z/data=!4m2!4m1!3e0`;
+}
+
+// ═══════════════════════════════════
+// MODAL
+// ═══════════════════════════════════
+function openModal(id = null) {
+  editingId = id; formCoords = { lat: null, lng: null };
+  get('form-error').textContent = ''; get('geocode-status').textContent = '';
+  get('modal-title').textContent = id ? 'Edit Apartment' : 'Add Apartment';
+  const checks = { 'f-wd': false, 'f-ac': false, 'f-parking': false, 'f-hardwood': false };
+  if (id) {
+    const a = apartments.find(x => x.id === id); if (!a) return;
+    get('f-name').value = a.name || '';       get('f-url').value = a.url || '';
+    get('f-address').value = a.address || ''; get('f-rent').value = a.rent || '';
+    get('f-sqft').value = a.sqft || '';       get('f-available').value = a.available || '';
+    get('f-commute').value = a.commute || ''; get('f-utilities').value = a.utilities || '';
+    get('f-notes').value = a.notes || '';
+    checks['f-wd'] = !!a.has_wd; checks['f-ac'] = !!a.has_ac;
+    checks['f-parking'] = !!a.has_parking; checks['f-hardwood'] = !!a.has_hardwood;
+    const r = document.querySelector(`input[name="f-status"][value="${a.status}"]`);
+    if (r) r.checked = true;
+    if (a.lat && a.lng) {
+      formCoords = { lat: a.lat, lng: a.lng };
+      get('geocode-status').textContent = 'Map pin loaded';
+      get('geocode-status').className = 'text-xs text-green-600 mt-1 h-4';
+    }
+  } else {
+    ['f-name','f-url','f-address','f-rent','f-sqft','f-available','f-commute','f-utilities','f-notes'].forEach(f => get(f).value = '');
+    document.querySelector('input[name="f-status"][value="not_visited"]').checked = true;
+  }
+  Object.entries(checks).forEach(([cid, val]) => { get(cid).checked = val; styleCheckbox(cid, 'lbl-' + cid.replace('f-','')); });
+  updateMapsLink();
+  get('modal').classList.remove('hidden'); get('f-name').focus();
+}
+
+function closeModal() { get('modal').classList.add('hidden'); editingId = null; }
+
+function submitForm() {
+  const name = get('f-name').value.trim(), address = get('f-address').value.trim(), rentStr = get('f-rent').value.trim();
+  const errEl = get('form-error');
+  if (!name)    { errEl.textContent = 'Name is required.'; return; }
+  if (!address) { errEl.textContent = 'Address is required.'; return; }
+  if (!rentStr) { errEl.textContent = 'Rent is required.'; return; }
+  errEl.textContent = '';
+  const existing = editingId ? apartments.find(x => x.id === editingId) : null;
+  const a = {
+    id: editingId || uid(), name, address, url: get('f-url').value.trim(),
+    rent: parseInt(rentStr) || 0, sqft: parseInt(get('f-sqft').value) || null,
+    available: get('f-available').value || null, commute: parseInt(get('f-commute').value) || null,
+    utilities: parseInt(get('f-utilities').value) || null,
+    has_wd: get('f-wd').checked, has_ac: get('f-ac').checked,
+    has_parking: get('f-parking').checked, has_hardwood: get('f-hardwood').checked,
+    status: document.querySelector('input[name="f-status"]:checked').value,
+    notes: get('f-notes').value.trim(),
+    lat: formCoords.lat, lng: formCoords.lng, list: 'shortlist',
+    plans: existing ? (existing.plans || []) : [],
+    promo: existing ? (existing.promo || null) : null,
+    added: existing ? (existing.added || today()) : today()
+  };
+  if (editingId) { const i = apartments.findIndex(x => x.id === editingId); if (i >= 0) apartments[i] = a; }
+  else apartments.unshift(a);
+  saveData(); closeModal(); renderStats(); applyFilters(); renderMapMarkers();
+  toast(editingId ? 'Updated!' : 'Added!');
+}
+
+// ═══════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════
+function deleteApt(id) {
+  const a = apartments.find(x => x.id === id);
+  if (!a || !confirm(`Delete "${a.name}"?`)) return;
+  apartments = apartments.filter(x => x.id !== id);
+  if (mapInst && mapMarkers[id]) { mapInst.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
+  saveData(); renderStats(); applyFilters(); toast('Deleted.');
+}
+
+function moveToShortlist(id) {
+  const a = apartments.find(x => x.id === id); if (!a) return;
+  a.list = 'shortlist'; saveData(); renderStats(); applyFilters();
+  toast(`"${a.name}" moved to Shortlist`);
+}
+
+// ═══════════════════════════════════
+// VIEW
+// ═══════════════════════════════════
+function setView(v) {
+  currentView = v;
+  const lp = get('list-panel'), mp = get('map-panel'), lg = get('map-legend');
+  const ON = 'px-3 py-1.5 bg-blue-600 text-white text-xs';
+  const OFF = 'px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50 text-xs';
+  ['list','split','map'].forEach(x => get('btn-'+x).className = (x===v ? ON : OFF));
+  if (v === 'list') {
+    lp.className = 'w-full overflow-y-auto p-4'; lp.classList.remove('hidden');
+    mp.classList.add('hidden'); lg.classList.add('hidden');
+  } else if (v === 'map') {
+    lp.classList.add('hidden');
+    mp.className = 'flex-1 border-l border-gray-200'; mp.classList.remove('hidden');
+    lg.classList.remove('hidden');
+    setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
+  } else {
+    lp.className = 'w-1/2 overflow-y-auto p-4'; lp.classList.remove('hidden');
+    mp.className = 'w-1/2 border-l border-gray-200'; mp.classList.remove('hidden');
+    lg.classList.remove('hidden');
+    setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
+  }
+}
+
+// ═══════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════
+function exportCSV() {
+  const src = apartments.filter(a => a.list === activeTab);
+  if (!src.length) { toast('Nothing to export'); return; }
+  const H = ['Name','List','Address','Rent','Utilities','Total','Sqft','Commute(min)','W/D','AC','Parking','Hardwood','Status','Available','Score','Promo','Notes','URL','Added'];
+  const rows = src.map(a => {
+    const s = score(a);
+    return [a.name, a.list, a.address, a.rent||'', a.utilities||'', (a.rent||0)+(a.utilities||0),
+            a.sqft||'', a.commute||'', yn(a.has_wd), yn(a.has_ac), yn(a.has_parking), yn(a.has_hardwood),
+            a.status, a.available||'', s.pts, a.promo||'', a.notes||'', a.url||'', a.added]
+      .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = [H.join(','), ...rows].join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a'); a.href = url; a.download = `apartments-${activeTab}-${today()}.csv`; a.click();
+  URL.revokeObjectURL(url); toast('CSV exported!');
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function clearFilters() {
+  get('search-input').value = ''; get('filter-status').value = 'all';
+  get('filter-criteria').value = 'all'; get('sort-by').value = 'score_desc';
+  applyFilters();
+}
+function styleCheckbox(cbId, lblId) {
+  const cb = get(cbId), lbl = get(lblId); if (!lbl) return;
+  cb.checked ? (lbl.classList.add('border-green-400','bg-green-50'), lbl.classList.remove('border-gray-200'))
+             : (lbl.classList.remove('border-green-400','bg-green-50'), lbl.classList.add('border-gray-200'));
+}
+function get(id)    { return document.getElementById(id); }
+function set(id, v) { const el = get(id); if (el) el.textContent = v; }
+function esc(s)     { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function enc(s)     { return encodeURIComponent(s || ''); }
+function yn(v)      { return v === true ? 'Yes' : v === null ? '?' : 'No'; }
+function today()    { return new Date().toISOString().split('T')[0]; }
+function fmtDate(d) {
+  if (!d) return '';
+  try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  catch { return d; }
+}
+let _tt;
+function toast(msg) {
+  const t = get('toast'); get('toast-msg').textContent = msg; t.classList.remove('hidden');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.add('hidden'), 2600);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !get('modal').classList.contains('hidden')) closeModal();
+  if ((e.metaKey||e.ctrlKey) && e.key==='k') { e.preventDefault(); get('search-input').focus(); }
+});
+get('modal').addEventListener('click', e => { if (e.target === get('modal')) closeModal(); });
+
+// ═══════════════════════════════════════════════════════
+// SHORTLIST  (updated Jun 2026 — 1BR/1BA prices)
+// ═══════════════════════════════════════════════════════
+const SHORTLIST = [
+  { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
+    url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/', lat:37.4003617, lng:-121.9245463,
+    rent:2931, sqft:540, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    plans:[{label:'1A',sqft:540,rent:2931,available:null},{label:'1B',sqft:760,rent:3330,available:null}],
+    notes:'1BR from $2,931 (1A, 540 sqft). In-unit W/D on patio/balcony. Central AC. LVP floors. 2-level controlled-access garage. Shea Properties.' },
+
+  { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
+    url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/', lat:37.4030199, lng:-121.9248667,
+    rent:2967, sqft:725, available:'2026-06-09', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    plans:[{label:'1BR',sqft:725,rent:2967,available:'2026-06-09'},{label:'Yosemite Falls',sqft:875,rent:3407,available:'2026-06-09'}],
+    notes:'1BR from $2,967 (725 sqft, Jun 9). 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex.' },
+
+  { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
+    url:'https://aireliving.com/', lat:37.4049829, lng:-121.9321983,
+    rent:3445, sqft:682, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    plans:[{label:'A1',sqft:682,rent:3445,available:null},{label:'A8',sqft:747,rent:3554,available:'2026-06-10'}],
+    notes:'OVER BUDGET: 1BR from $3,445 (A1, 682 sqft) — $45 over limit. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea.' },
+
+  { name:'River View Apartment Homes', address:'55 River Oaks Pl, San Jose, CA 95134',
+    url:'https://www.irvinecompanyapartments.com/locations/northern-california/san-jose/river-view.html', lat:37.4021394, lng:-121.9408608,
+    rent:3220, sqft:633, commute:20, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    notes:'1BR from $3,220. In-unit W/D. Hardwood-style flooring. 1 parking included. Irvine Company. Contact for current plans.' },
+
+  { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
+    url:'https://www.venue-apts.com/', lat:37.4124252, lng:-121.9398377,
+    rent:3251, sqft:784, available:'2026-06-17', commute:22, has_wd:true, has_ac:true, has_parking:null, has_hardwood:false,
+    plans:[{label:'A1',sqft:784,rent:3251,available:'2026-06-17'},{label:'A2',sqft:824,rent:3341,available:null},{label:'A3',sqft:875,rent:3466,available:null}],
+    notes:'LEED Gold. 1BR from $3,251 (Jun 17). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free.' },
+
+  { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino', lat:37.3325084, lng:-122.0383326,
+    rent:3118, sqft:785, available:'2026-06-03', commute:21, has_wd:true, has_ac:false, has_parking:true, has_hardwood:true,
+    promo:'Up to 2 Weeks Free',
+    plans:[{label:'1D Classic+WD',sqft:785,rent:3118,available:'2026-05-29'},{label:'1B Renovated',sqft:643,rent:3139,available:'2026-06-03'},{label:'1C Renov+WD',sqft:695,rent:3241,available:'2026-05-22'}],
+    notes:'NO AC — confirmed by reviews. 1BR from $3,118 (Classic w/WD, 785 sqft). Renovated plans have W/D; Classic w/WD plan available. 1 assigned parking. Up to 2 weeks free. Prometheus.' },
+
+  { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham', lat:37.3357483, lng:-122.0381189,
+    rent:3285, sqft:660, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    promo:'Up to $750 off first month',
+    plans:[{label:'1BR',sqft:660,rent:3285,available:null},{label:'1AR',sqft:750,rent:3397,available:null},{label:'1BR-R',sqft:770,rent:3584,available:null},{label:'1CR',sqft:795,rent:3628,available:null}],
+    notes:'1BR from $3,285 (660 sqft) — now within budget! In-unit W/D, hardwood floors, saltwater pool. Carport/garage parking included. Up to $750 off first month. Prometheus.' },
+
+  { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce', lat:37.3660162, lng:-122.0249647,
+    rent:3151, sqft:572, commute:12, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    plans:[{label:'1C',sqft:572,rent:3151,available:null},{label:'1A',sqft:546,rent:3257,available:null},{label:'1B',sqft:570,rent:3328,available:'2026-07-07'}],
+    notes:'1BR from $3,151. In-unit W/D, AC. Hardwood in some units. Parking not confirmed free — verify. 21-acre campus, 3 pools. Prometheus.' },
+
+  { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
+    url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone', lat:37.4040641, lng:-122.0965737,
+    rent:3618, sqft:520, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    notes:'FAILS W/D + OVER BUDGET: shared laundry only, 1BR from $3,618-$3,768. Free parking, LVP floors, AC. Mountain View. Prometheus.' },
+
+  { name:'Timberleaf Apartments', address:'2147 Newhall St, Santa Clara, CA 95050',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf', lat:37.3381498, lng:-121.9405116,
+    rent:3026, sqft:700, commute:20, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    promo:'4 Weeks Free on select units',
+    notes:'1BR from $3,026 (700 sqft). In-unit stackable W/D confirmed. AC confirmed. Parking fee unclear — verify. Hardwood floors. 4 weeks free on select units. Prometheus.' },
+
+  { name:'Alderwood Apartments', address:'900 Pepper Tree Ln, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/alderwood', lat:37.3419216, lng:-121.9827709,
+    rent:3165, sqft:700, commute:13, has_wd:null, has_ac:true, has_parking:true, has_hardwood:null,
+    notes:'1BR from $3,165 (was $3,215). Free parking confirmed. W/D: conflicting info — call to verify. AC confirmed. Floors: carpet or wood-plank depending on unit. Prometheus.' },
+
+  { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber', lat:37.3587745, lng:-122.0193082,
+    rent:2989, sqft:725, commute:12, has_wd:false, has_ac:null, has_parking:true, has_hardwood:true,
+    promo:'1 Month Free',
+    plans:[{label:'1FR',sqft:725,rent:3064,available:null},{label:'1AR',sqft:588,rent:3241,available:null}],
+    notes:'FAILS W/D: shared on-site laundry only. 1 Month Free promo makes effective rent ~$2,989. AC unconfirmed (built 1969 — call). Covered parking. Hardwood confirmed. Prometheus.' },
+
+  { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central', lat:37.350115, lng:-121.9460294,
+    rent:3159, sqft:662, commute:18, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    notes:'1BR from $3,159 (was $3,229). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus.' },
+
+  { name:'Cupertino City Center', address:'20350 Stevens Creek Blvd, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/cupertino-city-center', lat:37.3212928, lng:-122.029497,
+    rent:2951, sqft:668, commute:26, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    notes:'1BR ~$2,951 (668 sqft — verify current price). In-unit W/D, built-in AC, hardwood, fireplace, patio/balcony. Underground garage — confirm if parking is included. Prometheus.' },
+
+  { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
+    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire', lat:37.3909, lng:-122.0040,
+    rent:2889, sqft:710, commute:9, has_wd:null, has_ac:true, has_parking:true, has_hardwood:null,
+    promo:'Save up to $1,200',
+    notes:'1BR from $2,889 (was $3,029). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex.' },
+
+  { name:'Waterford Place', address:'1700 N 1st St, San Jose, CA 95112',
+    url:'https://www.essexapartmenthomes.com/apartments/san-jose/waterford-place', lat:37.3686, lng:-121.8949,
+    rent:2667, sqft:731, available:'2026-06-01', commute:22, has_wd:true, has_ac:null, has_parking:true, has_hardwood:true,
+    notes:'1BR from $2,667 (was $2,877) — available NOW. In-unit W/D confirmed for all 1BR units. AC listed but type (central/split vs window) unconfirmed — verify. Parking included. Hardwood. Essex.' },
+
+  { name:'Sage at Cupertino', address:'175 Calvert Dr, Cupertino, CA 95014',
+    url:'https://www.essexapartmenthomes.com/apartments/cupertino/sage-at-cupertino', lat:37.3193, lng:-122.0358,
+    rent:2819, sqft:685, available:'2026-06-05', commute:26, has_wd:null, has_ac:true, has_parking:true, has_hardwood:true,
+    notes:'1BR from $2,819 (was $3,087), available Jun 5. W/D in select units only — request specifically. Central AC. Parking included. LVP flooring. Near De Anza. Essex.' },
+
+  { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
+    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square', lat:37.3705, lng:-122.0404,
+    rent:3067, sqft:735, commute:11, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    notes:'1BR from $3,067 (was $3,197). Full-size in-unit W/D, central AC, hardwood, gas stove, private balcony. Parking — confirm free vs fee. EV charging. Near Sunnyvale Caltrain. Essex.' },
+
+  { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen', lat:37.3477, lng:-121.9703,
+    rent:3064, sqft:700, commute:19, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    promo:'1 Week Free on select units',
+    notes:'1BR from ~$3,064 (700-950 sqft). W/D: available at extra monthly cost — verify if this meets deal-breaker. AC type unconfirmed. Parking fee unclear. Heated saltwater pool. Prometheus.' },
+
+  { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
+    url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/', lat:37.4004, lng:-122.0180,
+    rent:3218, sqft:580, available:'2026-07-24', commute:7, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    plans:[{label:'Sonoma',sqft:580,rent:3218,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3598,available:'2026-07-17'}],
+    notes:'PAID PARKING: $25/mo extra — fails free parking requirement. Very close (~7 min). In-unit W/D + AC in renovated units. LVP floors. Sonoma: 580sqft $3,218 Jul 24. Santa Barbara: 704sqft $3,598 Jul 17. Windsor.' },
+
+  { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
+    url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments', lat:37.3985, lng:-121.9773,
+    rent:3297, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    plans:[{label:'1 Bed A',sqft:790,rent:3297,available:'2026-06-05'}],
+    notes:'1BR: 790 sqft, $3,297-$3,502, available Jun 5. In-unit W/D + central AC confirmed. Private garage — confirm if included in rent. Hard surface flooring in renovated units. Equity Apartments.' }
+];
+
+// ═══════════════════════════════════════════════════════
+// CORPUS
+// ═══════════════════════════════════════════════════════
+const CORPUS_LIST = [
+  { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
+    url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/', lat:37.3896, lng:-121.9992,
+    rent:3755, sqft:700, available:'2026-06-02', commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    notes:'WAY OVER BUDGET: 1BR from $3,755 (was $3,285 — prices rose significantly). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. AvalonBay.' },
+
+  { name:'Villa Del Sol', address:'355 E Evelyn Ave, Sunnyvale, CA 94086',
+    url:'https://www.villadelsolsunnyvale.com/', lat:37.3719, lng:-122.0178,
+    rent:3495, sqft:679, available:'2026-06-10', commute:10, has_wd:null, has_ac:true, has_parking:null, has_hardwood:true,
+    notes:'OVER BUDGET: 1BR from $3,495 (was $3,323), 679 sqft, Jun 10. W/D: conflicting — official site says included, aggregators say hookups only. AC + plank flooring confirmed. Verify W/D and parking.' },
+
+  { name:'Renaissance Apartment Homes', address:'718 Old San Francisco Rd, Sunnyvale, CA 94086',
+    url:'https://www.apartments.com/renaissance-apartment-homes-sunnyvale-ca/kby3blb/', lat:37.3608, lng:-122.0055,
+    rent:null, sqft:null, commute:11, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'No pricing available — check listing URL directly. All amenity details need to be verified. Commute estimated ~11 min.' }
+];
+
+// ═══════════════════════════════════
+// IMPORT
+// ═══════════════════════════════════
+const IMPORT_FIELDS = ['address','url','rent','sqft','available','commute','has_wd','has_ac','has_parking','has_hardwood','notes','plans','promo'];
+
+function importList(source, listType) {
+  let changed = false;
+  source.forEach(w => {
+    const idx = apartments.findIndex(a => a.name.toLowerCase() === w.name.toLowerCase());
+    if (idx >= 0) {
+      const a = apartments[idx];
+      IMPORT_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
+      if (!a.list) a.list = listType;
+      changed = true;
+    } else {
+      apartments.unshift({
+        id: uid(), name: w.name, address: w.address || '', url: w.url || '',
+        rent: w.rent ?? null, sqft: w.sqft ?? null, available: w.available || null,
+        commute: w.commute ?? null, utilities: null,
+        has_wd: w.has_wd ?? null, has_ac: w.has_ac ?? null,
+        has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
+        status: 'not_visited', notes: w.notes || '',
+        plans: w.plans || [], promo: w.promo || null,
+        lat: w.lat, lng: w.lng, list: listType, added: today()
+      });
+      changed = true;
+    }
+  });
+  if (changed) saveData();
+}
+
+function uid() { return 'apt_' + Math.random().toString(36).slice(2,9) + '_' + String(Date.now()).slice(-6); }
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+loadData();
+importList(SHORTLIST, 'shortlist');
+importList(CORPUS_LIST, 'corpus');
+setTab('shortlist');
+
+geocodeAddress(OFFICE_ADDRESS).then(c => { if (c) { OFFICE.lat = c.lat; OFFICE.lng = c.lng; } });
+</script>
+</body>
+</html>
