@@ -266,13 +266,18 @@
 </div>
 
 <!-- MAP LEGEND -->
-<div id="map-legend" class="hidden fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 space-y-1">
-  <p class="font-semibold text-gray-700 mb-1">Legend</p>
-  <p><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1.5"></span>Qualifies</p>
-  <p><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1.5"></span>Missing deal-breaker</p>
-  <p><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-1.5"></span>Over budget / commute</p>
-  <p><span class="inline-block w-3 h-3 rounded-full bg-violet-500 mr-1.5"></span>Corpus</p>
-  <p><span class="inline-block w-3 h-3 rounded-full bg-blue-600 mr-1.5"></span>Office</p>
+<div id="map-legend" class="hidden fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-lg border border-gray-200 text-xs text-gray-600 overflow-hidden">
+  <button onclick="toggleLegend()" class="flex items-center justify-between w-full px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition select-none">
+    <span>Legend</span>
+    <span id="legend-chevron" class="ml-4 text-gray-400 text-base leading-none">&#8964;</span>
+  </button>
+  <div id="legend-body" class="px-3 pb-2 space-y-1">
+    <p><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1.5"></span>Qualifies</p>
+    <p><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1.5"></span>Missing deal-breaker</p>
+    <p><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-1.5"></span>Over budget / commute</p>
+    <p><span class="inline-block w-3 h-3 rounded-full bg-violet-500 mr-1.5"></span>Corpus</p>
+    <p><span class="inline-block w-3 h-3 rounded-full bg-blue-600 mr-1.5"></span>Office</p>
+  </div>
 </div>
 
 <script>
@@ -797,6 +802,13 @@ function exportCSV() {
 // ═══════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════
+function toggleLegend() {
+  const body = get('legend-body'), chevron = get('legend-chevron');
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  chevron.innerHTML = collapsed ? '&#8964;' : '&#8963;';
+}
+
 function clearFilters() {
   get('search-input').value = ''; get('filter-status').value = 'all';
   get('filter-criteria').value = 'all'; get('sort-by').value = 'score_desc';
