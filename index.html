@@ -498,14 +498,14 @@ function card(apt) {
       </summary>
       <div class="divide-y divide-gray-100">
         ${apt.plans.map(p => {
-          const pc = p.rent <= MAX_RENT ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
+          const pc = p.rent && p.rent <= MAX_RENT ? 'text-green-700 font-semibold' : p.rent ? 'text-red-600 font-semibold' : 'text-gray-400';
           const pd = p.available ? new Date(p.available + 'T12:00:00') : null;
           const pdPast = pd && pd < now;
           const pdClr = pdPast ? 'text-gray-400' : pd && (pd - now)/86400000 <= 14 ? 'text-green-600' : 'text-blue-600';
           return `<div class="plan-row">
-            <span class="font-medium text-gray-700">${esc(p.label)} &middot; ${p.sqft} sqft</span>
+            <span class="font-medium text-gray-700">${esc(p.label)} &middot; ${p.sqft || '?'} sqft</span>
             <div class="flex items-center gap-3">
-              <span class="${pc}">$${p.rent.toLocaleString()}/mo</span>
+              <span class="${pc}">${p.rent ? '$' + p.rent.toLocaleString() + '/mo' : 'Call for price'}</span>
               ${p.available ? `<span class="${pdClr} text-xs">${pdPast ? '(passed) ' : ''}${fmtDate(p.available)}</span>` : '<span class="text-gray-400 text-xs">TBD</span>'}
             </div>
           </div>`;
