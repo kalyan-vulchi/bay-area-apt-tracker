@@ -877,10 +877,11 @@ const SHORTLIST = [
 
   { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino', lat:37.3325084, lng:-122.0383326,
-    rent:2751, sqft:785, available:'2026-06-03', commute:21, has_wd:true, has_ac:false, has_parking:true, has_hardwood:true,
+    rent:2700, sqft:785, commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
+    status:'toured',
     promo:'Up to 2 Weeks Free',
-    plans:[{label:'1D Classic+WD',sqft:785,rent:2751,available:null},{label:'1B Renovated',sqft:643,rent:2905,available:'2026-06-03'},{label:'1C Renov+WD',sqft:695,rent:3118,available:null}],
-    notes:'NO AC — confirmed by reviews. 1BR from $2,751 (was $3,118 — significant drop). Up to 2 Weeks Free on select units. 1 assigned parking. Prometheus. Refreshed 2026-06-01.' },
+    plans:[{label:'Classic',sqft:785,rent:2700,available:null},{label:'Renovated (window AC only)',sqft:643,rent:3139,available:null},{label:'Renovated (split AC + W/D)',sqft:695,rent:3500,available:null}],
+    notes:'TOURED Jun 1 — not impressed, not worth it. 3 tiers: Classic $2,700 (no W/D, no AC); Renovated $3,139 (window AC only, no W/D — fails both requirements); Renovated split AC + W/D $3,500 (over budget by $100). No plan within budget meets W/D + AC requirements. Reviews: thin walls, noise from upstairs neighbors, Hwy 280 traffic noise audible, fast driving in complex. Prometheus.' },
 
   { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham', lat:37.3357483, lng:-122.0381189,
@@ -913,10 +914,11 @@ const SHORTLIST = [
 
   { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber', lat:37.3587745, lng:-122.0193082,
-    rent:3087, sqft:588, commute:12, has_wd:false, has_ac:null, has_parking:true, has_hardwood:true,
+    rent:3368, sqft:588, commute:12, has_wd:false, has_ac:null, has_parking:true, has_hardwood:true,
+    status:'toured',
     promo:'1 Month Free',
     plans:[{label:'1AR',sqft:588,rent:3368,available:null},{label:'1FR',sqft:725,rent:3166,available:null}],
-    notes:'FAILS W/D: shared on-site laundry only. Listed from $3,166-$3,368; 1 Month Free promo → effective ~$3,087/mo. AC unconfirmed (built 1969 — call). Covered parking. Hardwood confirmed. Prometheus. Refreshed 2026-06-01.' },
+    notes:'TOURED Jun 1 — great apartments but prices too high. FAILS W/D: shared laundry only (confirmed). 1BR from $3,166-$3,368. AC unconfirmed (built 1969). Covered parking included. Hardwood confirmed. 3 separate buildings (Oak, West Oak, Umber) across 6 acres. Reviews: highly responsive management (Miguel praised), maintenance within an hour, occasional ants/spiders reported. Prometheus.' },
 
   { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central', lat:37.350115, lng:-121.9460294,
@@ -925,8 +927,9 @@ const SHORTLIST = [
 
   { name:'Cupertino City Center', address:'20350 Stevens Creek Blvd, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/cupertino-city-center', lat:37.3212928, lng:-122.029497,
-    rent:2951, sqft:668, commute:26, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
-    notes:'1BR from $2,951 (668 sqft, confirmed). In-unit W/D, built-in AC, hardwood, fireplace, patio/balcony. Underground garage — confirm if parking is included. Prometheus. Refreshed 2026-06-01.' },
+    rent:2951, sqft:668, commute:26, has_wd:false, has_ac:true, has_parking:null, has_hardwood:true,
+    status:'toured',
+    notes:'TOURED Jun 1 — good impression. FAILS W/D: shared laundry only (confirmed on tour). Split AC in living room confirmed. Hardwood floors entire unit confirmed. Walk-in closet + attached bathroom. Courtyard view. Good neighborhood. Underground garage — parking cost unconfirmed. Reviews: concrete floors = good sound insulation between units, early morning landscaping noise (leaf blowers), some management complaints. Prometheus.' },
 
   { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire', lat:37.3909, lng:-122.0040,
@@ -947,8 +950,9 @@ const SHORTLIST = [
   { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square', lat:37.3705, lng:-122.0404,
     rent:3067, sqft:735, commute:11, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    status:'toured',
     promo:'Save up to $1,000',
-    notes:'1BR from $3,067 (verify current pricing). Full-size in-unit W/D, central AC, hardwood, gas stove, private balcony. Save up to $1,000 on select homes. Parking — confirm free vs fee. EV charging. Near Sunnyvale Caltrain. Essex. Refreshed 2026-06-01.' },
+    notes:'TOURED Jun 1. Split AC in both living room + bedroom confirmed. Renovated. Gas stove. Good patio. Units 147 and 69 are the best ones. Guest parking on street — resident parking situation unclear, verify. NOISE CONCERNS: Caltrain audible from unit (close to tracks). Reviews: upstairs neighbor noise reported by multiple residents — these are ground-floor units so risk is real. Early AM construction/leaf blower noise. Package theft reported, security gate broken at times. Significant rent increase at renewal (reports of $300-800 jumps). Essex.' },
 
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen', lat:37.3477, lng:-121.9703,
