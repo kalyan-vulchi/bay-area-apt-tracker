@@ -864,10 +864,6 @@ const SHORTLIST = [
     plans:[{label:'A1',sqft:682,rent:3267,available:null}],
     notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01.' },
 
-  { name:'River View Apartment Homes', address:'55 River Oaks Pl, San Jose, CA 95134',
-    url:'https://www.irvinecompanyapartments.com/locations/northern-california/san-jose/river-view.html', lat:37.4021394, lng:-121.9408608,
-    rent:3220, sqft:633, commute:20, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    notes:'1BR from $3,220 (confirmed). In-unit W/D. Hardwood-style flooring. 1 parking included. Irvine Company. Refreshed 2026-06-01.' },
 
   { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
     url:'https://www.venue-apts.com/', lat:37.4124252, lng:-121.9398377,
@@ -1039,9 +1035,25 @@ function importList(source, listType) {
 function uid() { return 'apt_' + Math.random().toString(36).slice(2,9) + '_' + String(Date.now()).slice(-6); }
 
 // ═══════════════════════════════════
+// REMOVED  (personal choice — never re-add)
+// ═══════════════════════════════════
+const REMOVED = [
+  { name: 'River View Apartment Homes', reason: 'Personal choice' }
+];
+function purgeRemoved() {
+  let changed = false;
+  REMOVED.forEach(({ name }) => {
+    const idx = apartments.findIndex(a => a.name.toLowerCase() === name.toLowerCase());
+    if (idx >= 0) { apartments.splice(idx, 1); changed = true; }
+  });
+  if (changed) saveData();
+}
+
+// ═══════════════════════════════════
 // INIT
 // ═══════════════════════════════════
 loadData();
+purgeRemoved();
 importList(SHORTLIST, 'shortlist');
 importList(CORPUS_LIST, 'corpus');
 setTab('shortlist');
