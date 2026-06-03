@@ -51,6 +51,7 @@
         <span>Commute: 30 min Thu 9am</span>
       </div>
       <button onclick="exportCSV()" class="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">Export CSV</button>
+      <button onclick="exportJSON()" class="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">Sync Data</button>
       <button onclick="openModal()" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">+ Add</button>
     </div>
   </div>
@@ -296,6 +297,7 @@ let apartments = [];
 let mapInst = null, mapMarkers = {}, officeMarker = null;
 let editingId = null, currentView = 'list', formCoords = { lat: null, lng: null };
 let activeTab = 'shortlist';
+let currentFilteredList = null; // null = no filter applied yet; array = active filter result
 
 // ═══════════════════════════════════
 // STORAGE
@@ -358,6 +360,7 @@ function setTab(tab) {
   if (desc) desc.textContent = tab === 'shortlist'
     ? 'Your personally researched apartments'
     : 'Apartments found online — not yet personally reviewed';
+  currentFilteredList = null;
   renderStats(); applyFilters();
   if (mapInst) renderMapMarkers();
 }
@@ -422,6 +425,7 @@ function applyFilters() {
     }
   });
 
+  currentFilteredList = list;
   renderList(list); renderMapMarkers();
 }
 
@@ -616,7 +620,10 @@ function renderMapMarkers() {
   if (!mapInst) return;
   Object.values(mapMarkers).forEach(m => mapInst.removeLayer(m));
   mapMarkers = {};
-  apartments.filter(a => a.list === activeTab && a.lat && a.lng).forEach(apt => {
+  const source = currentFilteredList !== null
+    ? currentFilteredList.filter(a => a.lat && a.lng)
+    : apartments.filter(a => a.list === activeTab && a.lat && a.lng);
+  source.forEach(apt => {
     const s = score(apt);
     const col = apt.list === 'corpus' ? '#8b5cf6' :
                 s.qualifies ? '#22c55e' :
@@ -797,6 +804,13 @@ function exportCSV() {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   const a = document.createElement('a'); a.href = url; a.download = `apartments-${activeTab}-${today()}.csv`; a.click();
   URL.revokeObjectURL(url); toast('CSV exported!');
+}
+
+function exportJSON() {
+  const payload = JSON.stringify(apartments, null, 2);
+  const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = `apartments-data-${today()}.json`; a.click();
+  URL.revokeObjectURL(url); toast('Data exported — share the .json file to sync to GitHub.');
 }
 
 // ═══════════════════════════════════
