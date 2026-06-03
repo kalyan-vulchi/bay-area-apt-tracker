@@ -648,7 +648,9 @@ function highlightCard(id) {
 function focusMapMarker(id) {
   highlightCard(id);
   if (!mapInst || !mapMarkers[id]) return;
-  mapMarkers[id].openPopup();
+  const marker = mapMarkers[id];
+  marker.openPopup();
+  setTimeout(() => marker.closePopup(), 2000);
 }
 
 // ═══════════════════════════════════
