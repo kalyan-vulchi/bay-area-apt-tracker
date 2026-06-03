@@ -850,7 +850,8 @@ const SHORTLIST = [
     rent:3198, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     promo:'Up to 2 Weeks Free on select floor plans',
     plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
-    notes:'1BR from $2,931 (1A, 540 sqft). 1C plan 780 sqft from $3,035. In-unit W/D on patio/balcony. Central AC. LVP floors. 2-level controlled-access garage. Shea Properties. Refreshed 2026-06-01.' },
+    status:'toured',
+    notes:'TOURED Jun 2 — excellent apartments, amenities, and neighborhood. Too pricey. AVOID unit 107 (red flag). In-unit W/D confirmed. Central AC. LVP floors. 2-level gated garage. Shea Properties. Reviews: 530+ 5-star Google reviews, safe community, responsive maintenance. Watch out for car break-ins (reported), high move-out charges, and steep rent increases at renewal.' },
 
   { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
     url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/', lat:37.4030199, lng:-121.9248667,
@@ -910,7 +911,9 @@ const SHORTLIST = [
     rent:3215, sqft:700, available:null, commute:13, has_wd:null, has_ac:true, has_parking:true, has_hardwood:null,
     promo:'3 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1AR',sqft:700,rent:3215,available:null}],
-    notes:'1BR from $3,165 (confirmed). Free parking confirmed. W/D: conflicting info — call to verify. AC confirmed. Floors: carpet or wood-plank depending on unit. Prometheus. Refreshed 2026-06-01.' },
+    status:'toured',
+    has_wd:true,
+    notes:'TOURED Jun 2 — amazing community, great apartments. Split AC in living room confirmed. In-unit W/D confirmed. Free parking confirmed. CONSTRUCTION: new complex being built next door (old Kaiser hospital site) — expect noise/dust for next 6+ months. Promotions likely coming soon. Reviews: construction noise ongoing, thin walls between units, water heater noise issues reported, otherwise well-liked community. Prometheus.' },
 
   { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber', lat:37.3587745, lng:-122.0193082,
@@ -982,7 +985,8 @@ const SHORTLIST = [
       {label:'Chronicle',sqft:739,rent:3177,available:'2026-06-07'},
       {label:'Saga',sqft:778,rent:3257,available:null}
     ],
-    notes:'1BR from $3,107 (Chronicle 739 sqft or Saga 778 sqft, available now). In-unit W/D + AC confirmed. Wood-style flooring. EV charging available — parking cost not confirmed, verify if free. Essex. North San Jose / River Oaks area.' },
+    status:'toured',
+    notes:'TOURED Jun 2 — bad maintenance in common spaces, courtyard views unimpressive, average interiors. Units seen/available: 224, 312, 316, 352, 544, 592, 594. In-unit W/D + AC confirmed. Wood-style flooring. Parking cost unconfirmed — verify. Reviews: 2.7 stars Birdeye (418 reviews), thin walls/noise, ongoing construction noise, management complaints, maintenance in units reportedly OK but common areas neglected. Essex.' },
 
   { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
     url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments', lat:37.3985, lng:-121.9773,
@@ -1052,7 +1056,7 @@ function uid() { return 'apt_' + Math.random().toString(36).slice(2,9) + '_' + S
 // REMOVED  (personal choice — never re-add)
 // ═══════════════════════════════════
 const REMOVED = [
-  { name: 'River View Apartment Homes', reason: 'Personal choice' }
+  { name: 'River View Apartment Homes', reason: 'Personal choice — toured Jun 2: good apartments but min $3,400 on floors 2+, W/D confirmed. Reviews: mold reports, bad management, old AC units, ants in summer.' }
 ];
 function purgeRemoved() {
   let changed = false;
