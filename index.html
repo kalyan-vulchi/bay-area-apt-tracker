@@ -1054,7 +1054,11 @@ const CORPUS_LIST = [
 // ═══════════════════════════════════
 // IMPORT
 // ═══════════════════════════════════
-const IMPORT_FIELDS = ['address','url','rent','sqft','available','commute','has_wd','has_ac','has_parking','has_hardwood','notes','plans','promo'];
+// Fields updated on every load for existing entries (never prices — those are version-gated)
+const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
+// Price fields — only applied when PRICE_VERSION is newer than stored version
+const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
+const PRICE_VERSION = 1; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
@@ -1062,11 +1066,13 @@ function importList(source, listType) {
     const idx = apartments.findIndex(a => a.name.toLowerCase() === w.name.toLowerCase());
     if (idx >= 0) {
       const a = apartments[idx];
+      // Always sync non-price fields
       IMPORT_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
       if (!a.list) a.list = listType;
       if (w.status && w.status !== 'not_visited' && a.status === 'not_visited') a.status = w.status;
       changed = true;
     } else {
+      // New entry — seed everything including prices
       apartments.unshift({
         id: uid(), name: w.name, address: w.address || '', url: w.url || '',
         rent: w.rent ?? null, sqft: w.sqft ?? null, available: w.available || null,
@@ -1081,6 +1087,21 @@ function importList(source, listType) {
     }
   });
   if (changed) saveData();
+}
+
+function importPrices() {
+  const storedVersion = parseInt(localStorage.getItem('kalyan_price_version') || '0');
+  if (PRICE_VERSION <= storedVersion) return; // already applied this version, user edits are safe
+  const allSource = [...SHORTLIST, ...CORPUS_LIST];
+  allSource.forEach(w => {
+    const idx = apartments.findIndex(a => a.name.toLowerCase() === w.name.toLowerCase());
+    if (idx >= 0) {
+      const a = apartments[idx];
+      PRICE_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
+    }
+  });
+  localStorage.setItem('kalyan_price_version', PRICE_VERSION);
+  saveData();
 }
 
 function uid() { return 'apt_' + Math.random().toString(36).slice(2,9) + '_' + String(Date.now()).slice(-6); }
@@ -1107,6 +1128,7 @@ loadData();
 purgeRemoved();
 importList(SHORTLIST, 'shortlist');
 importList(CORPUS_LIST, 'corpus');
+importPrices();
 setTab('shortlist');
 
 geocodeAddress(OFFICE_ADDRESS).then(c => { if (c) { OFFICE.lat = c.lat; OFFICE.lng = c.lng; } });
