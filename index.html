@@ -957,11 +957,6 @@ const SHORTLIST = [
     plans:[{label:'Plan 1A',sqft:710,rent:2629,available:'2026-06-09'}],
     notes:'1BR from $2,799 (was $2,889). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex. Refreshed 2026-06-01.' },
 
-  { name:'Waterford Place', address:'1700 N 1st St, San Jose, CA 95112',
-    url:'https://www.essexapartmenthomes.com/apartments/san-jose/waterford-place', lat:37.3686, lng:-121.8949,
-    rent:2667, sqft:731, available:null, commute:22, has_wd:true, has_ac:null, has_parking:true, has_hardwood:true,
-    plans:[{label:'1BR/1BA',sqft:731,rent:2667,available:null}],
-    notes:'1BR from $2,667 — verify current pricing and availability. In-unit W/D confirmed for all 1BR units. AC type unconfirmed — verify. Parking included. Hardwood. Essex. Refreshed 2026-06-01.' },
 
   { name:'Sage at Cupertino', address:'175 Calvert Dr, Cupertino, CA 95014',
     url:'https://www.essexapartmenthomes.com/apartments/cupertino/sage-at-cupertino', lat:37.3193, lng:-122.0358,
@@ -1110,7 +1105,8 @@ function uid() { return 'apt_' + Math.random().toString(36).slice(2,9) + '_' + S
 // REMOVED  (personal choice — never re-add)
 // ═══════════════════════════════════
 const REMOVED = [
-  { name: 'River View Apartment Homes', reason: 'Personal choice — toured Jun 2: good apartments but min $3,400 on floors 2+, W/D confirmed. Reviews: mold reports, bad management, old AC units, ants in summer.' }
+  { name: 'River View Apartment Homes', reason: 'Personal choice — toured Jun 2: good apartments but min $3,400 on floors 2+, W/D confirmed. Reviews: mold reports, bad management, old AC units, ants in summer.' },
+  { name: 'Waterford Place', reason: 'Removed' }
 ];
 function purgeRemoved() {
   let changed = false;
