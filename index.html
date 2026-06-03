@@ -889,7 +889,7 @@ document.addEventListener('keydown', e => {
 get('modal').addEventListener('click', e => { if (e.target === get('modal')) closeModal(); });
 
 // ═══════════════════════════════════════════════════════
-// SHORTLIST  (updated 2026-06-02 — 1BR/1BA prices)
+// SHORTLIST  (updated 2026-06-03 — 1BR/1BA prices)
 // ═══════════════════════════════════════════════════════
 const SHORTLIST = [
   { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
@@ -902,20 +902,21 @@ const SHORTLIST = [
 
   { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
     url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/', lat:37.4030199, lng:-121.9248667,
-    rent:3407, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
-    plans:[{label:'Angel Falls',sqft:725,rent:2967,available:null}],
+    rent:2817, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
+    plans:[{label:'Angel Falls',sqft:725,rent:2817,available:null}],
     notes:'1BR from ~$2,614 (725 sqft) — notable drop from $2,967; verify current pricing on site. 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex. Refreshed 2026-06-01.' },
 
   { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
     url:'https://aireliving.com/', lat:37.4049829, lng:-121.9321983,
-    rent:3415, sqft:864, available:'2026-06-02', commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3415, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     promo:null,
-    plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:'2026-06-02'},{label:'A27',sqft:979,rent:3752,available:null}],
+    plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:null},{label:'A27',sqft:979,rent:3752,available:null}],
     notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01. OVER BUDGET as of 2026-06-02: lowest 1BR now $3,415.' },
 
   { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
     url:'https://www.venue-apts.com/', lat:37.4124252, lng:-121.9398377,
     rent:3269, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    promo:'Up to $1,499 off',
     plans:[{label:'A1',sqft:784,rent:3357,available:'2026-08-04'},{label:'A2',sqft:824,rent:3397,available:null},{label:'A3',sqft:875,rent:3522,available:'2026-07-11'},{label:'A4',sqft:1022,rent:3300,available:null}],
     notes:'LEED Gold. 1BR from $3,263 (was $3,251). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free. Refreshed 2026-06-01.' },
 
@@ -929,26 +930,26 @@ const SHORTLIST = [
 
   { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham', lat:37.3357483, lng:-122.0381189,
-    rent:3522, sqft:660, available:'2026-06-02', commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:null,
-    plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:'2026-06-02'},{label:'Plan 1BR',sqft:750,rent:3397,available:'2026-06-02'},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
+    rent:3285, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    promo:'Up to $750 off first month',
+    plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:null},{label:'Plan 1BR',sqft:750,rent:3397,available:null},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
     notes:'1BR from $3,055 (was $3,285; 660 sqft). In-unit W/D, hardwood floors, saltwater pool. Carport/garage parking included. Promo changed to 2 Weeks Free (was $750 off). Prometheus. Refreshed 2026-06-01.' },
 
   { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce', lat:37.3660162, lng:-122.0249647,
-    rent:3330, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3151, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     plans:[{label:'Plan 1A',sqft:546,rent:2948,available:null},{label:'Plan 1D',sqft:676,rent:3044,available:null},{label:'Plan 1C',sqft:572,rent:3131,available:null},{label:'Plan 1B',sqft:570,rent:3206,available:null}],
     notes:'1BR from $3,151 (property starts at $2,618 overall incl. studios — verify 1BR specific). In-unit W/D, AC. Hardwood in some units. Parking not confirmed free — verify. 21-acre campus, 3 pools. Prometheus. Refreshed 2026-06-01.' },
 
   { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
     url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone', lat:37.4040641, lng:-122.0965737,
-    rent:3640, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3064, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
     plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
     notes:'FAILS W/D: shared laundry only. 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
 
   { name:'Timberleaf Apartments', address:'2147 Newhall St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf', lat:37.3381498, lng:-121.9405116,
-    rent:3426, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3026, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     promo:'4 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
     notes:'1BR from $3,026 (700 sqft, confirmed). In-unit stackable W/D confirmed. AC confirmed. Parking fee unclear — verify. Hardwood floors. 4 Weeks Free on select units. Prometheus. Refreshed 2026-06-01.' },
@@ -964,7 +965,7 @@ const SHORTLIST = [
 
   { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber', lat:37.3587745, lng:-122.0193082,
-    rent:3186, sqft:799, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3051, sqft:799, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     promo:'4 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1BR',sqft:799,rent:3186,available:null},{label:'Plan 1CR',sqft:725,rent:3228,available:null}],
@@ -972,7 +973,7 @@ const SHORTLIST = [
 
   { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central', lat:37.350115, lng:-121.9460294,
-    rent:3353, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3159, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'Plan 1A',sqft:662,rent:2993,available:null}],
     notes:'1BR from $3,254 (was $3,159 — increased). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus. Refreshed 2026-06-01.' },
 
@@ -985,7 +986,7 @@ const SHORTLIST = [
 
   { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire', lat:37.3909, lng:-122.0040,
-    rent:3247, sqft:710, available:'2026-06-09', commute:9, has_wd:false, has_ac:true, has_parking:true, has_hardwood:false,
+    rent:2629, sqft:710, available:'2026-06-09', commute:9, has_wd:false, has_ac:true, has_parking:true, has_hardwood:false,
     promo:null,
     plans:[{label:'Plan 1A',sqft:710,rent:2629,available:'2026-06-09'}],
     notes:'1BR from $2,799 (was $2,889). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex. Refreshed 2026-06-01.' },
@@ -1015,7 +1016,7 @@ const SHORTLIST = [
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/', lat:37.4004, lng:-122.0180,
-    rent:3182, sqft:580, available:'2026-07-24', commute:7, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3197, sqft:580, available:'2026-07-24', commute:7, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'PAID PARKING: $25/mo extra — fails free parking requirement. Very close (~7 min). In-unit W/D + AC in renovated units. LVP floors. Sonoma: 580sqft $3,209 Jul 24 (was $3,218). Santa Barbara: 704sqft $3,598 Jul 17. Windsor. Refreshed 2026-06-01.' },
 
@@ -1028,19 +1029,19 @@ const SHORTLIST = [
 
   { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
     url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments', lat:37.3985, lng:-121.9773,
-    rent:3312, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
-    plans:[{label:'1 Bed A',sqft:790,rent:2922,available:'2026-06-05'}],
+    rent:3024, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    plans:[{label:'1 Bed A',sqft:790,rent:3024,available:'2026-06-05'}],
     notes:'1BR: 790 sqft, $3,297 (confirmed). Available Jun 5. In-unit W/D + central AC confirmed. Private garage — confirm if included in rent. Hard surface flooring in renovated units. Equity Apartments. Refreshed 2026-06-01.' },
 
   { name:'Marina Cove', address:'3480 Granada Ave, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/marina-cove/', lat:37.3295, lng:-121.9734,
-    rent:3109, sqft:725, available:'2026-07-07', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3117, sqft:725, available:'2026-06-21', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     plans:[{label:'1BR',sqft:725,rent:3117,available:'2026-07-07'},{label:'1BR',sqft:720,rent:3159,available:'2026-07-04'},{label:'1BR',sqft:725,rent:3269,available:'2026-06-25'},{label:'1BR',sqft:720,rent:3277,available:'2026-06-21'}],
     notes:'1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
 
   { name:'River Terrace', address:'730 Agnew Rd, Santa Clara, CA 95054',
     url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/', lat:37.3975, lng:-121.9609,
-    rent:3150, sqft:null, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
+    rent:2967, sqft:null, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
     promo:'$500 off first month',
     notes:'1BR from $3,051. No units currently available — sign up for alerts. In-home W/D + AC confirmed. Same-level parking included. Walk-in closets, private patio/balcony, granite countertops. UDR. North Santa Clara near Great America.' }
 ];
@@ -1051,14 +1052,14 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/', lat:37.3896, lng:-121.9992,
-    rent:3215, sqft:700, available:'2026-06-02', commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3350, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     promo:null,
-    plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
+    plans:[{label:'A1',sqft:700,rent:3350,available:null},{label:'A2',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
 
   { name:'Villa Del Sol', address:'355 E Evelyn Ave, Sunnyvale, CA 94086',
     url:'https://www.villadelsolsunnyvale.com/', lat:37.3719, lng:-122.0178,
-    rent:3495, sqft:679, available:'2026-06-10', commute:10, has_wd:null, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:3594, sqft:679, available:'2026-06-10', commute:10, has_wd:null, has_ac:true, has_parking:null, has_hardwood:true,
     plans:[{label:'1BR/1BA',sqft:679,rent:3594,available:'2026-06-10'}],
     notes:'OVER BUDGET: 1BR from $3,695 (was $3,495 — increased). W/D: conflicting — official site says included, aggregators say hookups only. AC + plank flooring confirmed. Verify W/D and parking. Refreshed 2026-06-01. Price back to $3,495 as of 2026-06-02; still over budget.' },
 
@@ -1076,7 +1077,7 @@ const CORPUS_LIST = [
 const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
 // Price fields — only applied when PRICE_VERSION is newer than stored version
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 2; // increment this (in code + cron PRs) to push new prices to all browsers
+const PRICE_VERSION = 3; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
