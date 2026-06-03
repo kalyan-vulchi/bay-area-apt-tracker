@@ -534,7 +534,7 @@ function card(apt) {
        </div>`;
 
   return `
-  <div class="apt-card bg-white rounded-xl shadow-sm border border-gray-100 ${border} p-4 animate-in" data-id="${apt.id}">
+  <div class="apt-card bg-white rounded-xl shadow-sm border border-gray-100 ${border} p-4 animate-in cursor-pointer" data-id="${apt.id}" onclick="if(!event.target.closest('a,button,details')) focusMapMarker('${apt.id}')">
 
     <!-- Badge row -->
     <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
@@ -643,6 +643,14 @@ function highlightCard(id) {
   document.querySelectorAll('.apt-card').forEach(el => el.classList.remove('highlighted'));
   const el = document.querySelector(`.apt-card[data-id="${id}"]`);
   if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+function focusMapMarker(id) {
+  highlightCard(id);
+  if (!mapInst || !mapMarkers[id]) return;
+  const marker = mapMarkers[id];
+  mapInst.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
+  marker.openPopup();
 }
 
 // ═══════════════════════════════════
