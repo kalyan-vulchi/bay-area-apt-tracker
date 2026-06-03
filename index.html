@@ -1041,7 +1041,7 @@ function importList(source, listType) {
         commute: w.commute ?? null, utilities: null,
         has_wd: w.has_wd ?? null, has_ac: w.has_ac ?? null,
         has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
-        status: 'not_visited', notes: w.notes || '',
+        status: w.status || 'not_visited', notes: w.notes || '',
         plans: w.plans || [], promo: w.promo || null,
         lat: w.lat, lng: w.lng, list: listType, added: today()
       });
