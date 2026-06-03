@@ -1033,6 +1033,7 @@ function importList(source, listType) {
       const a = apartments[idx];
       IMPORT_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
       if (!a.list) a.list = listType;
+      if (w.status && w.status !== 'not_visited' && a.status === 'not_visited') a.status = w.status;
       changed = true;
     } else {
       apartments.unshift({
