@@ -648,9 +648,7 @@ function highlightCard(id) {
 function focusMapMarker(id) {
   highlightCard(id);
   if (!mapInst || !mapMarkers[id]) return;
-  const marker = mapMarkers[id];
-  mapInst.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
-  marker.openPopup();
+  mapMarkers[id].openPopup();
 }
 
 // ═══════════════════════════════════
