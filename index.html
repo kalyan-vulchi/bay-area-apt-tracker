@@ -627,7 +627,7 @@ function markerColor(apt) {
 function makeMarkerIcon(apt, selected) {
   const col = markerColor(apt);
   const label = apt.rent ? '$' + Math.round(apt.rent / 100) : '?';
-  const inner = `<div onclick="selectApartment('${apt.id}')" style="background:${col};color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.25)">${label}</div>`;
+  const inner = `<div onclick="highlightCard('${apt.id}')" style="background:${col};color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.25)">${label}</div>`;
   const html = selected
     ? `<div style="position:relative;width:30px;height:30px"><div style="position:absolute;top:-7px;left:-7px;width:44px;height:44px;border-radius:50%;border:3px solid #111827;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 4px 14px rgba(0,0,0,.45)"></div>${inner}</div>`
     : inner;
