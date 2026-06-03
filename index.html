@@ -298,6 +298,7 @@ let mapInst = null, mapMarkers = {}, officeMarker = null;
 let editingId = null, currentView = 'list', formCoords = { lat: null, lng: null };
 let activeTab = 'shortlist';
 let currentFilteredList = null; // null = no filter applied yet; array = active filter result
+let selectedAptId = null;
 
 // ═══════════════════════════════════
 // STORAGE
@@ -616,6 +617,23 @@ function initMap() {
   renderMapMarkers();
 }
 
+function markerColor(apt) {
+  const s = score(apt);
+  return apt.list === 'corpus' ? '#8b5cf6' :
+         s.qualifies ? '#22c55e' :
+         (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? '#ef4444' : '#f59e0b';
+}
+
+function makeMarkerIcon(apt, selected) {
+  const col = markerColor(apt);
+  const label = apt.rent ? '$' + Math.round(apt.rent / 100) : '?';
+  const inner = `<div onclick="selectApartment('${apt.id}')" style="background:${col};color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.25)">${label}</div>`;
+  const html = selected
+    ? `<div style="position:relative;width:30px;height:30px"><div style="position:absolute;top:-7px;left:-7px;width:44px;height:44px;border-radius:50%;border:3px solid #111827;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 4px 14px rgba(0,0,0,.45)"></div>${inner}</div>`
+    : inner;
+  return L.divIcon({ className: '', html, iconSize: [30, 30], iconAnchor: [15, 15] });
+}
+
 function renderMapMarkers() {
   if (!mapInst) return;
   Object.values(mapMarkers).forEach(m => mapInst.removeLayer(m));
@@ -624,25 +642,32 @@ function renderMapMarkers() {
     ? currentFilteredList.filter(a => a.lat && a.lng)
     : apartments.filter(a => a.list === activeTab && a.lat && a.lng);
   source.forEach(apt => {
-    const s = score(apt);
-    const col = apt.list === 'corpus' ? '#8b5cf6' :
-                s.qualifies ? '#22c55e' :
-                (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? '#ef4444' : '#f59e0b';
-    const label = apt.rent ? '$' + Math.round(apt.rent / 100) : '?';
-    const icon = L.divIcon({
-      className: '',
-      html: `<div onclick="highlightCard('${apt.id}')" style="background:${col};color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer">${label}</div>`,
-      iconSize: [30, 30], iconAnchor: [15, 15]
-    });
     const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${apt.rent<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? apt.rent.toLocaleString() : '—'}/mo</span> &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min commute' : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
-    mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon }).addTo(mapInst).bindPopup(popup);
+    mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon: makeMarkerIcon(apt, apt.id === selectedAptId) })
+      .addTo(mapInst).bindPopup(popup);
   });
+}
+
+function selectApartment(id) {
+  const prev = selectedAptId;
+  selectedAptId = id;
+  // Update previous marker back to normal
+  if (prev && prev !== id && mapMarkers[prev]) {
+    const prevApt = apartments.find(a => a.id === prev);
+    if (prevApt) mapMarkers[prev].setIcon(makeMarkerIcon(prevApt, false));
+  }
+  // Highlight new marker
+  if (id && mapMarkers[id]) {
+    const apt = apartments.find(a => a.id === id);
+    if (apt) mapMarkers[id].setIcon(makeMarkerIcon(apt, true));
+  }
 }
 
 function highlightCard(id) {
   document.querySelectorAll('.apt-card').forEach(el => el.classList.remove('highlighted'));
   const el = document.querySelector(`.apt-card[data-id="${id}"]`);
   if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  selectApartment(id);
 }
 
 function focusMapMarker(id) {
