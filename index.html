@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     #map { height: 100%; min-height: 400px; }
     .apt-card { transition: box-shadow 0.15s, transform 0.12s; }
@@ -134,9 +135,10 @@
   </select>
   <button onclick="clearFilters()" class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">Clear</button>
   <div class="ml-auto flex border border-gray-200 rounded-lg overflow-hidden text-xs">
-    <button id="btn-list"  onclick="setView('list')"  class="px-3 py-1.5 bg-blue-600 text-white">List</button>
-    <button id="btn-split" onclick="setView('split')" class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Split</button>
-    <button id="btn-map"   onclick="setView('map')"   class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Map</button>
+    <button id="btn-list"   onclick="setView('list')"   class="px-3 py-1.5 bg-blue-600 text-white">List</button>
+    <button id="btn-split"  onclick="setView('split')"  class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Split</button>
+    <button id="btn-map"    onclick="setView('map')"    class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Map</button>
+    <button id="btn-trends" onclick="setView('trends')" class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Trends</button>
   </div>
 </div>
 
@@ -155,6 +157,20 @@
   </div>
   <div id="map-panel" class="hidden border-l border-gray-200 flex-shrink-0">
     <div id="map" class="w-full h-full"></div>
+  </div>
+  <div id="trends-panel" class="hidden w-full flex-col p-4 gap-3 overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <div class="text-sm font-semibold text-gray-700">Price History</div>
+      <div class="flex gap-2 text-xs text-gray-400">
+        <span id="trends-count"></span>
+        <button onclick="trendsSelectAll(true)"  class="text-blue-500 hover:underline">Show all</button>
+        <span>&middot;</span>
+        <button onclick="trendsSelectAll(false)" class="text-blue-500 hover:underline">Hide all</button>
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;position:relative">
+      <canvas id="trends-chart"></canvas>
+    </div>
   </div>
 </div>
 
@@ -299,6 +315,15 @@ let editingId = null, currentView = 'list', formCoords = { lat: null, lng: null 
 let activeTab = 'shortlist';
 let currentFilteredList = null; // null = no filter applied yet; array = active filter result
 let selectedAptId = null;
+let trendsChart = null;
+
+const CHART_COLORS = [
+  '#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6',
+  '#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6',
+  '#6366f1','#a855f7','#10b981','#f43f5e','#0ea5e9',
+  '#d97706','#7c3aed','#059669','#dc2626','#2563eb',
+  '#16a34a','#ca8a04','#9333ea','#0891b2','#be123c'
+];
 
 // ═══════════════════════════════════
 // STORAGE
@@ -311,6 +336,7 @@ function loadData() {
       apartments.forEach(a => {
         if (!a.list) a.list = 'shortlist';
         if (!a.plans) a.plans = [];
+        if (!a.price_history) a.price_history = a.rent ? [{ date: a.added || today(), rent: a.rent }] : [];
       });
     }
   } catch (_) { apartments = []; }
@@ -427,7 +453,9 @@ function applyFilters() {
   });
 
   currentFilteredList = list;
-  renderList(list); renderMapMarkers();
+  renderList(list);
+  renderMapMarkers();
+  if (currentView === 'trends') renderTrends();
 }
 
 // ═══════════════════════════════════
@@ -757,9 +785,17 @@ function submitForm() {
   if (!rentStr) { errEl.textContent = 'Rent is required.'; return; }
   errEl.textContent = '';
   const existing = editingId ? apartments.find(x => x.id === editingId) : null;
+  const newRent = parseInt(rentStr) || 0;
+  const priceHistory = existing ? [...(existing.price_history || [])] : [];
+  if (existing && newRent && newRent !== existing.rent) {
+    if (priceHistory.length === 0 && existing.rent) priceHistory.push({ date: existing.added || today(), rent: existing.rent });
+    priceHistory.push({ date: today(), rent: newRent });
+  } else if (!existing && newRent) {
+    priceHistory.push({ date: today(), rent: newRent });
+  }
   const a = {
     id: editingId || uid(), name, address, url: get('f-url').value.trim(),
-    rent: parseInt(rentStr) || 0, sqft: parseInt(get('f-sqft').value) || null,
+    rent: newRent, sqft: parseInt(get('f-sqft').value) || null,
     available: get('f-available').value || null, commute: parseInt(get('f-commute').value) || null,
     utilities: parseInt(get('f-utilities').value) || null,
     has_wd: get('f-wd').checked, has_ac: get('f-ac').checked,
@@ -769,6 +805,7 @@ function submitForm() {
     lat: formCoords.lat, lng: formCoords.lng, list: 'shortlist',
     plans: existing ? (existing.plans || []) : [],
     promo: existing ? (existing.promo || null) : null,
+    price_history: priceHistory,
     added: existing ? (existing.added || today()) : today()
   };
   if (editingId) { const i = apartments.findIndex(x => x.id === editingId); if (i >= 0) apartments[i] = a; }
@@ -799,23 +836,25 @@ function moveToShortlist(id) {
 // ═══════════════════════════════════
 function setView(v) {
   currentView = v;
-  const lp = get('list-panel'), mp = get('map-panel'), lg = get('map-legend');
+  const lp = get('list-panel'), mp = get('map-panel'), lg = get('map-legend'), tp = get('trends-panel');
   const ON = 'px-3 py-1.5 bg-blue-600 text-white text-xs';
   const OFF = 'px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50 text-xs';
-  ['list','split','map'].forEach(x => get('btn-'+x).className = (x===v ? ON : OFF));
+  ['list','split','map','trends'].forEach(x => { const b = get('btn-'+x); if (b) b.className = (x===v ? ON : OFF); });
+  lp.classList.add('hidden'); mp.classList.add('hidden'); lg.classList.add('hidden'); tp.classList.add('hidden');
   if (v === 'list') {
     lp.className = 'w-full overflow-y-auto p-4'; lp.classList.remove('hidden');
-    mp.classList.add('hidden'); lg.classList.add('hidden');
   } else if (v === 'map') {
-    lp.classList.add('hidden');
     mp.className = 'flex-1 border-l border-gray-200'; mp.classList.remove('hidden');
     lg.classList.remove('hidden');
     setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
-  } else {
+  } else if (v === 'split') {
     lp.className = 'w-1/2 overflow-y-auto p-4'; lp.classList.remove('hidden');
     mp.className = 'w-1/2 border-l border-gray-200'; mp.classList.remove('hidden');
     lg.classList.remove('hidden');
     setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
+  } else if (v === 'trends') {
+    tp.style.display = 'flex'; tp.classList.remove('hidden');
+    setTimeout(() => renderTrends(), 50);
   }
 }
 
@@ -854,6 +893,113 @@ function toggleLegend() {
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? '' : 'none';
   chevron.innerHTML = collapsed ? '&#8964;' : '&#8963;';
+}
+
+// ═══════════════════════════════════
+// TRENDS CHART
+// ═══════════════════════════════════
+function renderTrends() {
+  const canvas = get('trends-chart');
+  if (!canvas) return;
+
+  const apts = (currentFilteredList !== null
+    ? currentFilteredList
+    : apartments.filter(a => a.list === activeTab)
+  ).filter(a => a.price_history && a.price_history.length > 0);
+
+  set('trends-count', apts.length + ' apartment' + (apts.length !== 1 ? 's' : ''));
+
+  // Collect all unique dates sorted
+  const allDates = [...new Set(apts.flatMap(a => a.price_history.map(h => h.date)))].sort();
+
+  if (allDates.length === 0) {
+    if (trendsChart) { trendsChart.destroy(); trendsChart = null; }
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#9ca3af'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('No price history yet — edit a rent to start tracking.', canvas.width / 2, 80);
+    return;
+  }
+
+  const datasets = apts.map((apt, i) => {
+    const col = CHART_COLORS[i % CHART_COLORS.length];
+    return {
+      label: apt.name.replace(' Apartments','').replace(' Apartment Homes',''),
+      data: allDates.map(d => { const p = apt.price_history.find(h => h.date === d); return p ? p.rent : null; }),
+      borderColor: col,
+      backgroundColor: col + '18',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      tension: 0.15,
+      spanGaps: true,
+      fill: false
+    };
+  });
+
+  // Budget line
+  datasets.push({
+    label: 'Budget ($3,400)',
+    data: allDates.map(() => MAX_RENT),
+    borderColor: '#ef4444',
+    borderWidth: 1.5,
+    borderDash: [6, 4],
+    pointRadius: 0,
+    fill: false,
+    order: -1
+  });
+
+  if (trendsChart) trendsChart.destroy();
+  trendsChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: allDates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          ticks: { font: { size: 11 }, maxRotation: 30 },
+          grid: { color: '#f1f5f9' }
+        },
+        y: {
+          min: 2200,
+          ticks: {
+            callback: v => '$' + v.toLocaleString(),
+            font: { size: 11 }
+          },
+          grid: { color: '#f1f5f9' }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font: { size: 11 }, boxWidth: 10, padding: 8, usePointStyle: true },
+          onClick(e, item, legend) {
+            const ci = legend.chart;
+            const meta = ci.getDatasetMeta(item.datasetIndex);
+            meta.hidden = !meta.hidden;
+            ci.update();
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.parsed.y != null ? ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}` : null,
+            filter: item => item.parsed.y != null
+          },
+          itemSort: (a, b) => a.parsed.y - b.parsed.y
+        }
+      }
+    }
+  });
+}
+
+function trendsSelectAll(show) {
+  if (!trendsChart) return;
+  trendsChart.data.datasets.forEach((_, i) => {
+    trendsChart.getDatasetMeta(i).hidden = !show;
+  });
+  trendsChart.update();
 }
 
 function clearFilters() {
@@ -1157,6 +1303,7 @@ function importList(source, listType) {
         has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
         status: w.status || 'not_visited', notes: w.notes || '',
         plans: w.plans || [], promo: w.promo || null,
+        price_history: w.rent ? [{ date: today(), rent: w.rent }] : [],
         lat: w.lat, lng: w.lng, list: listType, added: today()
       });
       changed = true;
@@ -1167,12 +1314,23 @@ function importList(source, listType) {
 
 function importPrices() {
   const storedVersion = parseInt(localStorage.getItem('kalyan_price_version') || '0');
-  if (PRICE_VERSION <= storedVersion) return; // already applied this version, user edits are safe
+  if (PRICE_VERSION <= storedVersion) return;
   const allSource = [...SHORTLIST, ...CORPUS_LIST];
+  const dateStr = today();
   allSource.forEach(w => {
     const idx = apartments.findIndex(a => a.name.toLowerCase() === w.name.toLowerCase());
     if (idx >= 0) {
       const a = apartments[idx];
+      if (!a.price_history) a.price_history = [];
+      // Record rent history on change
+      if (w.rent && w.rent !== a.rent) {
+        if (a.price_history.length === 0 && a.rent) {
+          a.price_history.push({ date: a.added || dateStr, rent: a.rent });
+        }
+        a.price_history.push({ date: dateStr, rent: w.rent });
+      } else if (w.rent && a.price_history.length === 0) {
+        a.price_history.push({ date: dateStr, rent: w.rent });
+      }
       PRICE_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
     }
   });
