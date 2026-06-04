@@ -889,7 +889,7 @@ document.addEventListener('keydown', e => {
 get('modal').addEventListener('click', e => { if (e.target === get('modal')) closeModal(); });
 
 // ═══════════════════════════════════════════════════════
-// SHORTLIST  (updated 2026-06-02 — 1BR/1BA prices)
+// SHORTLIST  (updated 2026-06-04 — availability refresh)
 // ═══════════════════════════════════════════════════════
 const SHORTLIST = [
   { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
@@ -908,8 +908,8 @@ const SHORTLIST = [
 
   { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
     url:'https://aireliving.com/', lat:37.4049829, lng:-121.9321983,
-    rent:3415, sqft:864, available:'2026-06-02', commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:null,
+    rent:3415, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    promo:'2 Weeks Free on Select Apartments',
     plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:'2026-06-02'},{label:'A27',sqft:979,rent:3752,available:null}],
     notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01. OVER BUDGET as of 2026-06-02: lowest 1BR now $3,415.' },
 
@@ -921,7 +921,7 @@ const SHORTLIST = [
 
   { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino', lat:37.3325084, lng:-122.0383326,
-    rent:3118, sqft:785, available:'2026-06-03', commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
+    rent:3118, sqft:785, available:null, commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
     status:'toured',
     promo:'Up to 2 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1D - Classic w/ WD',sqft:785,rent:3118,available:null},{label:'Plan 1B - Renovated',sqft:643,rent:3139,available:'2026-06-03'},{label:'Plan 1C - Renovated w/ WD',sqft:695,rent:3241,available:null},{label:'Plan 1B - Renovated w/ WD',sqft:643,rent:3314,available:'2026-07-02'}],
@@ -929,8 +929,8 @@ const SHORTLIST = [
 
   { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham', lat:37.3357483, lng:-122.0381189,
-    rent:3522, sqft:660, available:'2026-06-02', commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:null,
+    rent:3522, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    promo:'2 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:'2026-06-02'},{label:'Plan 1BR',sqft:750,rent:3397,available:'2026-06-02'},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
     status:'toured',
     notes:'TOURED Jun 3 — decent interiors, okish community, rents are high for what you get. In-unit W/D, hardwood floors, saltwater pool. Carport/garage parking included. Prometheus.' },
@@ -1050,7 +1050,7 @@ const SHORTLIST = [
 
   { name:'Riley Square', address:'3707 Poinciana Dr, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/riley-square/', lat:37.3393, lng:-121.9833,
-    rent:3017, sqft:630, available:'2026-06-01', commute:15, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:3017, sqft:630, available:null, commute:15, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     plans:[{label:'1BR',sqft:630,rent:3017,available:'2026-06-01'},{label:'1BR',sqft:630,rent:3017,available:'2026-06-19'}],
     notes:'1BR from $3,017 (630 sqft, available now). In-unit W/D + AC confirmed. Wood-style + carpet flooring. Parking available — cost unknown, verify. Essex. Santa Clara.' },
 
@@ -1062,7 +1062,7 @@ const SHORTLIST = [
 
   { name:'Villas on the Boulevard', address:'2615 El Camino Real, Santa Clara, CA 95051',
     url:'https://www.villasontheboulevard.com/floorplans', lat:37.3512, lng:-121.9785,
-    rent:3208, sqft:758, available:'2026-06-01', commute:14, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:3208, sqft:758, available:null, commute:14, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     plans:[{label:'1A',sqft:758,rent:3208,available:'2026-06-01'}],
     notes:'1BR from $3,208 (758 sqft, available now). Full-size in-unit W/D. Central AC. Contemporary wood flooring. On-site parking garage — cost unknown, verify. Quartz countertops, smart home tech, private stoops/balconies. Built 2017, 186 units. Santa Clara.' },
 
@@ -1079,7 +1079,7 @@ const SHORTLIST = [
 
   { name:'The Verdant', address:'3700 Casa Verde St, San Jose, CA 95134',
     url:'https://www.verdant-apts.com/ca/san-jose/floorplans/a1', lat:37.4120, lng:-121.9390,
-    rent:3113, sqft:681, available:'2026-06-01', commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    rent:3113, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
     plans:[{label:'A1',sqft:681,rent:3113,available:'2026-06-01'},{label:'A2',sqft:759,rent:3236,available:'2026-06-01'},{label:'A3',sqft:830,rent:3260,available:'2026-06-06'}],
     notes:'1BR from $3,113 (A1, 681 sqft, available now). In-unit W/D + central AC confirmed. Gated garage parking included (free). Village-style community, North San Jose. Flooring unconfirmed.' },
 
@@ -1109,7 +1109,7 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/', lat:37.3896, lng:-121.9992,
-    rent:3215, sqft:700, available:'2026-06-02', commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3215, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     promo:null,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
