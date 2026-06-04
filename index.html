@@ -902,7 +902,7 @@ const SHORTLIST = [
 
   { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
     url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/', lat:37.4030199, lng:-121.9248667,
-    rent:3407, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
+    rent:3399, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
     plans:[{label:'Angel Falls',sqft:725,rent:2967,available:null}],
     notes:'1BR from ~$2,614 (725 sqft) — notable drop from $2,967; verify current pricing on site. 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex. Refreshed 2026-06-01.' },
 
@@ -944,13 +944,13 @@ const SHORTLIST = [
 
   { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
     url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone', lat:37.4040641, lng:-122.0965737,
-    rent:3640, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3660, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
     plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
     notes:'FAILS W/D: shared laundry only. 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
 
   { name:'Timberleaf Apartments', address:'2147 Newhall St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf', lat:37.3381498, lng:-121.9405116,
-    rent:3426, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3417, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     promo:'4 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
     notes:'1BR from $3,026 (700 sqft, confirmed). In-unit stackable W/D confirmed. AC confirmed. Parking fee unclear — verify. Hardwood floors. 4 Weeks Free on select units. Prometheus. Refreshed 2026-06-01.' },
@@ -974,7 +974,7 @@ const SHORTLIST = [
 
   { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central', lat:37.350115, lng:-121.9460294,
-    rent:3353, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3253, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'Plan 1A',sqft:662,rent:2993,available:null}],
     notes:'1BR from $3,254 (was $3,159 — increased). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus. Refreshed 2026-06-01.' },
 
@@ -1037,7 +1037,7 @@ const SHORTLIST = [
 
   { name:'Marina Cove', address:'3480 Granada Ave, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/marina-cove/', lat:37.3295, lng:-121.9734,
-    rent:3109, sqft:725, available:'2026-07-07', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3147, sqft:725, available:'2026-07-07', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     plans:[{label:'1BR',sqft:725,rent:3117,available:'2026-07-07'},{label:'1BR',sqft:720,rent:3159,available:'2026-07-04'},{label:'1BR',sqft:725,rent:3269,available:'2026-06-25'},{label:'1BR',sqft:720,rent:3277,available:'2026-06-21'}],
     notes:'1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
 
@@ -1080,7 +1080,7 @@ const CORPUS_LIST = [
 const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
 // Price fields — only applied when PRICE_VERSION is newer than stored version
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 2; // increment this (in code + cron PRs) to push new prices to all browsers
+const PRICE_VERSION = 3; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
