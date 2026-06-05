@@ -1115,7 +1115,7 @@ get('modal').addEventListener('click', e => { if (e.target === get('modal')) clo
 const SHORTLIST = [
   { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
     url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/', lat:37.4003398, lng:-121.9245178,
-    rent:3232, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3262, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     promo:'Up to 2 Weeks Free on select floor plans',
     plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
     status:'toured',
@@ -1238,7 +1238,7 @@ const SHORTLIST = [
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/', lat:37.4003031, lng:-122.0163202,
-    rent:3189, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
+    rent:3373, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
     status:'toured',
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. NO AC (central heater only) — portable AC rental +$40/mo available for summer. Sonoma: shared laundry per building, NO in-unit W/D. Walk-in closet. Santa Barbara W/D unconfirmed — verify. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
@@ -1332,7 +1332,7 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/', lat:37.3877241, lng:-121.993485,
-    rent:3215, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3700, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     promo:null,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
@@ -1357,7 +1357,7 @@ const CORPUS_LIST = [
 const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
 // Price fields — only applied when PRICE_VERSION is newer than stored version
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 5; // increment this (in code + cron PRs) to push new prices to all browsers
+const PRICE_VERSION = 6; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
