@@ -137,6 +137,7 @@
   </select>
   <button onclick="clearFilters()" class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">Clear</button>
   <div class="ml-auto flex border border-gray-200 rounded-lg overflow-hidden text-xs">
+    <button id="btn-summary" onclick="setView('summary')" class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Summary</button>
     <button id="btn-list"   onclick="setView('list')"   class="px-3 py-1.5 bg-blue-600 text-white">List</button>
     <button id="btn-split"  onclick="setView('split')"  class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Split</button>
     <button id="btn-map"    onclick="setView('map')"    class="px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50">Map</button>
@@ -188,6 +189,50 @@
     </div>
     <div style="flex:1;min-height:0;position:relative">
       <canvas id="trends-chart"></canvas>
+    </div>
+  </div>
+  <div id="summary-panel" class="hidden w-full flex-col p-6 gap-6 overflow-y-auto">
+    <h2 class="text-lg font-bold text-gray-900">Apartment Market Summary</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">TOTAL APARTMENTS</p>
+        <p class="text-2xl font-bold text-gray-900" id="summary-total">—</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">WITHIN BUDGET</p>
+        <p class="text-2xl font-bold text-green-600" id="summary-within-budget">—</p>
+        <p class="text-xs text-gray-400 mt-1" id="summary-budget-pct"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">QUALIFY</p>
+        <p class="text-2xl font-bold text-blue-600" id="summary-qualifies">—</p>
+        <p class="text-xs text-gray-400 mt-1" id="summary-qualify-pct"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">AVERAGE RENT</p>
+        <p class="text-2xl font-bold text-gray-900" id="summary-avg-rent">—</p>
+        <p class="text-xs text-gray-400 mt-1" id="summary-avg-7day"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">PRICE TREND (7 DAYS)</p>
+        <p class="text-2xl font-bold" id="summary-trend">—</p>
+        <p class="text-xs text-gray-400 mt-1" id="summary-trend-count"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-xs text-gray-500 font-semibold mb-1">PRICE RANGE</p>
+        <p class="text-sm font-bold text-gray-900" id="summary-range">—</p>
+        <p class="text-xs text-gray-400 mt-1" id="summary-range-spread"></p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-sm font-semibold text-gray-900 mb-3">Status Distribution</p>
+        <div class="space-y-2" id="summary-status-dist"></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <p class="text-sm font-semibold text-gray-900 mb-3">Notable Apartments</p>
+        <div class="space-y-2 text-xs" id="summary-notable"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -865,13 +910,17 @@ function moveToShortlist(id) {
 // ═══════════════════════════════════
 function setView(v) {
   currentView = v;
-  const lp = get('list-panel'), mp = get('map-panel'), lg = get('map-legend'), tp = get('trends-panel');
+  const lp = get('list-panel'), mp = get('map-panel'), lg = get('map-legend'), tp = get('trends-panel'), sp = get('summary-panel');
   const ON = 'px-3 py-1.5 bg-blue-600 text-white text-xs';
   const OFF = 'px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50 text-xs';
-  ['list','split','map','trends'].forEach(x => { const b = get('btn-'+x); if (b) b.className = (x===v ? ON : OFF); });
+  ['summary','list','split','map','trends'].forEach(x => { const b = get('btn-'+x); if (b) b.className = (x===v ? ON : OFF); });
   lp.classList.add('hidden'); mp.classList.add('hidden'); lg.classList.add('hidden');
   tp.style.display = ''; tp.classList.add('hidden');
-  if (v === 'list') {
+  sp.classList.add('hidden');
+  if (v === 'summary') {
+    sp.classList.remove('hidden');
+    setTimeout(() => renderSummary(), 50);
+  } else if (v === 'list') {
     lp.className = 'w-full overflow-y-auto p-4'; lp.classList.remove('hidden');
   } else if (v === 'map') {
     mp.className = 'flex-1 border-l border-gray-200'; mp.classList.remove('hidden');
@@ -1072,6 +1121,74 @@ function trendsSelectAll(show) {
   get('apt-checkbox-list')?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = show);
   const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__').length;
   updateAptFilterLabel(total);
+}
+
+function renderSummary() {
+  const apts = currentFilteredList !== null ? currentFilteredList : apartments.filter(a => a.list === activeTab);
+
+  // Calculate metrics
+  const total = apts.length;
+  const withBudget = apts.filter(a => a.rent && a.rent <= MAX_RENT).length;
+  const qualifies = apts.filter(a => score(a).qualifies).length;
+  const avgRent = apts.filter(a => a.rent).length > 0
+    ? Math.round(apts.filter(a => a.rent).reduce((s,a) => s + a.rent, 0) / apts.filter(a => a.rent).length)
+    : 0;
+
+  // 7-day trend
+  const today_str = today();
+  const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
+  let upCount = 0, downCount = 0;
+  apts.forEach(a => {
+    if (!a.price_history || a.price_history.length < 2) return;
+    const recent = a.price_history.filter(h => h.date >= sevenDaysAgo);
+    if (recent.length >= 2) {
+      const oldest = recent[0].rent;
+      const newest = recent[recent.length - 1].rent;
+      if (newest > oldest) upCount++;
+      else if (newest < oldest) downCount++;
+    }
+  });
+  const trendDir = upCount > downCount ? '📈 Up' : downCount > upCount ? '📉 Down' : '➡️ Stable';
+  const trendMsg = `${upCount} up, ${downCount} down`;
+
+  // Price range
+  const rents = apts.filter(a => a.rent).map(a => a.rent).sort((a,b) => a-b);
+  const minRent = rents.length > 0 ? rents[0] : 0;
+  const maxRent = rents.length > 0 ? rents[rents.length-1] : 0;
+  const spread = maxRent - minRent;
+
+  // Status distribution
+  const statusDist = {};
+  apts.forEach(a => { statusDist[a.status || 'not_visited'] = (statusDist[a.status || 'not_visited'] || 0) + 1; });
+  const statusHtml = Object.entries(statusDist).map(([s, c]) =>
+    `<p class="flex justify-between"><span class="capitalize">${s}:</span><span class="font-semibold">${c}</span></p>`
+  ).join('');
+
+  // Notable apartments
+  const notableParts = [];
+  const cheapest = apts.filter(a => a.rent).sort((a,b) => a.rent - b.rent)[0];
+  if (cheapest) notableParts.push(`<p>💰 Cheapest: <strong>${cheapest.name}</strong> — $${cheapest.rent}</p>`);
+  const expensive = apts.filter(a => a.rent).sort((a,b) => b.rent - a.rent)[0];
+  if (expensive && expensive.name !== cheapest?.name) notableParts.push(`<p>🏷️ Most Expensive: <strong>${expensive.name}</strong> — $${expensive.rent}</p>`);
+  const shortCommute = apts.filter(a => a.commute).sort((a,b) => a.commute - b.commute)[0];
+  if (shortCommute) notableParts.push(`<p>⚡ Shortest Commute: <strong>${shortCommute.name}</strong> — ${shortCommute.commute} min</p>`);
+  const recentlyToured = apts.filter(a => a.status === 'toured').sort((a,b) => new Date(b.added) - new Date(a.added))[0];
+  if (recentlyToured) notableParts.push(`<p>✅ Recently Toured: <strong>${recentlyToured.name}</strong></p>`);
+
+  // Update UI
+  set('summary-total', total.toString());
+  set('summary-within-budget', withBudget.toString());
+  set('summary-budget-pct', `${total > 0 ? Math.round(withBudget/total*100) : 0}% of total`);
+  set('summary-qualifies', qualifies.toString());
+  set('summary-qualify-pct', `${total > 0 ? Math.round(qualifies/total*100) : 0}% qualify`);
+  set('summary-avg-rent', `$${avgRent.toLocaleString()}`);
+  set('summary-avg-7day', `Current average`);
+  set('summary-trend', trendDir);
+  set('summary-trend-count', trendMsg);
+  set('summary-range', `$${minRent.toLocaleString()} – $${maxRent.toLocaleString()}`);
+  set('summary-range-spread', `Spread: $${spread.toLocaleString()}`);
+  set('summary-status-dist', statusHtml);
+  set('summary-notable', notableParts.join(''));
 }
 
 function filterAptDropdown() {
