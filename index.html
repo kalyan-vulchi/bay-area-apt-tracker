@@ -932,10 +932,11 @@ function renderTrends() {
   const canvas = get('trends-chart');
   if (!canvas) return;
 
-  const apts = (currentFilteredList !== null
+  const allApts = currentFilteredList !== null
     ? currentFilteredList
-    : apartments.filter(a => a.list === activeTab)
-  ).filter(a => a.price_history && a.price_history.length > 0);
+    : apartments.filter(a => a.list === activeTab);
+
+  const apts = allApts.filter(a => a.price_history && a.price_history.length > 0);
 
   const allDates = [...new Set(apts.flatMap(a => a.price_history.map(h => h.date)))].sort();
 
@@ -1019,24 +1020,28 @@ function renderTrends() {
   });
   trendsChart.update('none');
 
-  // Build checkbox list
-  buildAptCheckboxList(apts, datasets);
+  // Build checkbox list (show all apartments, not just those with price history)
+  buildAptCheckboxList(allApts, datasets);
   updateAptFilterLabel(apts.length);
 }
 
 function buildAptCheckboxList(apts, datasets) {
   const list = get('apt-checkbox-list');
   if (!list) return;
-  list.innerHTML = datasets.filter(d => d._fullName !== '__budget__').map((ds, i) => `
+  list.innerHTML = apts.map(apt => {
+    const ds = datasets.find(d => d._fullName === apt.name);
+    const col = ds ? ds._color : '#9ca3af';
+    return `
     <div class="apt-checkbox-item">
       <label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer select-none">
-        <input type="checkbox" ${hiddenAptNames.has(ds._fullName) ? '' : 'checked'}
-          onchange="toggleAptLine('${ds._fullName.replace(/'/g,"\\'")}', this.checked)"
-          class="w-3.5 h-3.5 flex-shrink-0" style="accent-color:${ds._color}">
-        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:${ds._color}"></span>
-        <span class="text-xs text-gray-700 truncate">${esc(ds.label)}</span>
+        <input type="checkbox" ${hiddenAptNames.has(apt.name) ? '' : 'checked'}
+          onchange="toggleAptLine('${apt.name.replace(/'/g,"\\'")}', this.checked)"
+          class="w-3.5 h-3.5 flex-shrink-0" style="accent-color:${col}">
+        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:${col}"></span>
+        <span class="text-xs text-gray-700 truncate">${esc(apt.name)}</span>
       </label>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function toggleAptDropdown() {
