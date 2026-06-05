@@ -179,7 +179,9 @@
               <button onclick="trendsSelectAll(false)" class="text-blue-500 hover:underline">None</button>
             </div>
           </div>
-          <div id="apt-checkbox-list" class="overflow-y-auto" style="max-height:260px"></div>
+          <input id="apt-search-input" type="text" placeholder="Search apartments..." oninput="filterAptDropdown()"
+            class="w-full px-3 py-2 text-xs border-b border-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+          <div id="apt-checkbox-list" class="overflow-y-auto" style="max-height:220px"></div>
         </div>
       </div>
       <span id="trends-count" class="text-xs text-gray-400"></span>
@@ -1026,13 +1028,15 @@ function buildAptCheckboxList(apts, datasets) {
   const list = get('apt-checkbox-list');
   if (!list) return;
   list.innerHTML = datasets.filter(d => d._fullName !== '__budget__').map((ds, i) => `
-    <label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer select-none">
-      <input type="checkbox" ${hiddenAptNames.has(ds._fullName) ? '' : 'checked'}
-        onchange="toggleAptLine('${ds._fullName.replace(/'/g,"\\'")}', this.checked)"
-        class="w-3.5 h-3.5 flex-shrink-0" style="accent-color:${ds._color}">
-      <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:${ds._color}"></span>
-      <span class="text-xs text-gray-700 truncate">${esc(ds.label)}</span>
-    </label>`).join('');
+    <div class="apt-checkbox-item">
+      <label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer select-none">
+        <input type="checkbox" ${hiddenAptNames.has(ds._fullName) ? '' : 'checked'}
+          onchange="toggleAptLine('${ds._fullName.replace(/'/g,"\\'")}', this.checked)"
+          class="w-3.5 h-3.5 flex-shrink-0" style="accent-color:${ds._color}">
+        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:${ds._color}"></span>
+        <span class="text-xs text-gray-700 truncate">${esc(ds.label)}</span>
+      </label>
+    </div>`).join('');
 }
 
 function toggleAptDropdown() {
@@ -1063,6 +1067,16 @@ function trendsSelectAll(show) {
   get('apt-checkbox-list')?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = show);
   const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__').length;
   updateAptFilterLabel(total);
+}
+
+function filterAptDropdown() {
+  const query = get('apt-search-input')?.value.toLowerCase() || '';
+  const items = get('apt-checkbox-list')?.querySelectorAll('.apt-checkbox-item');
+  if (!items) return;
+  items.forEach(item => {
+    const label = item.querySelector('label')?.textContent.toLowerCase() || '';
+    item.style.display = label.includes(query) ? '' : 'none';
+  });
 }
 
 function updateAptFilterLabel(total) {
