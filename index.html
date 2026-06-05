@@ -1187,8 +1187,8 @@ function renderSummary() {
   set('summary-trend-count', trendMsg);
   set('summary-range', `$${minRent.toLocaleString()} – $${maxRent.toLocaleString()}`);
   set('summary-range-spread', `Spread: $${spread.toLocaleString()}`);
-  set('summary-status-dist', statusHtml);
-  set('summary-notable', notableParts.join(''));
+  get('summary-status-dist').innerHTML = statusHtml;
+  get('summary-notable').innerHTML = notableParts.join('');
 }
 
 function filterAptDropdown() {
