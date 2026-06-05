@@ -855,7 +855,8 @@ function setView(v) {
   const ON = 'px-3 py-1.5 bg-blue-600 text-white text-xs';
   const OFF = 'px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50 text-xs';
   ['list','split','map','trends'].forEach(x => { const b = get('btn-'+x); if (b) b.className = (x===v ? ON : OFF); });
-  lp.classList.add('hidden'); mp.classList.add('hidden'); lg.classList.add('hidden'); tp.classList.add('hidden');
+  lp.classList.add('hidden'); mp.classList.add('hidden'); lg.classList.add('hidden');
+  tp.style.display = ''; tp.classList.add('hidden');
   if (v === 'list') {
     lp.className = 'w-full overflow-y-auto p-4'; lp.classList.remove('hidden');
   } else if (v === 'map') {
