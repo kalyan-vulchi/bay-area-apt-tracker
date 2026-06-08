@@ -1422,7 +1422,7 @@ const SHORTLIST = [
     notes:'1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
 
   { name:'Epic Apartments', address:'600 Epic Way, San Jose, CA 95134',
-    url:'https://www.essexapartmenthomes.com/apartments/san-jose/epic', lat:37.3988114, lng:-121.9213079,
+    url:'https://www.essexapartmenthomes.com/apartments/san-jose/epic/floor-plans-and-pricing', lat:37.3988114, lng:-121.9213079,
     rent:3137, sqft:739, available:'2026-06-07', commute:16, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     plans:[{label:'Chronicle',sqft:739,rent:3107,available:null},{label:'Saga',sqft:778,rent:3107,available:null},{label:'Chronicle',sqft:739,rent:3177,available:'2026-06-07'},{label:'Saga',sqft:778,rent:3257,available:null}],
@@ -1621,11 +1621,12 @@ const CORPUS_LIST = [
 // ═══════════════════════════════════
 // IMPORT
 // ═══════════════════════════════════
-// Fields updated on every load for existing entries (never prices — those are version-gated)
-const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
-// Price fields — only applied when PRICE_VERSION is newer than stored version
-const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 8; // increment this (in code + cron PRs) to push new prices to all browsers
+// Fields updated on every load for existing entries (never prices/links — those are version-gated)
+const IMPORT_FIELDS = ['address','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
+// Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
+// stored version, so your browser edits to these persist until the next version bump.
+const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
+const PRICE_VERSION = 9; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
