@@ -120,13 +120,23 @@
   </select>
   <select id="filter-criteria" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
     <option value="all">All</option>
-    <option value="qualifies">Qualifies (all required)</option>
+    <option value="qualifies">✅ Qualifies (all musts)</option>
+    <option value="near_miss">🔑 Near miss (1 away)</option>
+    <option value="needs_verify">📞 Needs verify (in budget)</option>
+    <option value="under_budget">💰 Under Budget (&le; $3,300)</option>
+    <option value="over_budget">💸 Over Budget</option>
+    <option value="commute_ok">🚗 Commute &le; 30 min</option>
+    <option value="has_promo">🏷️ Has Promotion</option>
+    <option value="avail_soon">🗓️ Available &le; 30 days</option>
     <option value="missing_dealbreaker">Missing Deal-breaker</option>
-    <option value="over_budget">Over Budget</option>
-    <option value="commute_ok">Commute &le; 30 min</option>
-    <option value="has_promo">Has Promotion</option>
-    <option value="avail_soon">Available &le; 30 days</option>
   </select>
+  <div class="flex gap-1 items-center">
+    <span class="text-xs text-gray-400 mr-0.5">Must have:</span>
+    <button data-amen="wd"       onclick="toggleAmenity('wd')"       class="amen-chip"></button>
+    <button data-amen="ac"       onclick="toggleAmenity('ac')"       class="amen-chip"></button>
+    <button data-amen="parking"  onclick="toggleAmenity('parking')"  class="amen-chip"></button>
+    <button data-amen="hardwood" onclick="toggleAmenity('hardwood')" class="amen-chip"></button>
+  </div>
   <select id="sort-by" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
     <option value="score_desc">Best Match</option>
     <option value="rent_asc">Rent (low to high)</option>
@@ -500,13 +510,22 @@ function applyFilters() {
     if (a.list !== activeTab) return false;
     if (q && !a.name.toLowerCase().includes(q) && !(a.address||'').toLowerCase().includes(q)) return false;
     if (st !== 'all' && a.status !== st) return false;
+    // Must-have amenity chips (combinable, AND). Strict: confirmed true only.
+    if (amenityFilters.wd       && a.has_wd !== true)       return false;
+    if (amenityFilters.ac       && a.has_ac !== true)       return false;
+    if (amenityFilters.parking  && a.has_parking !== true)  return false;
+    if (amenityFilters.hardwood && a.has_hardwood !== true) return false;
     const s = score(a);
+    const commuteOk = !a.commute || a.commute <= MAX_COMMUTE;
     if (cr === 'qualifies'           && !s.qualifies) return false;
     if (cr === 'missing_dealbreaker' && a.has_wd && a.has_ac && a.has_parking) return false;
+    if (cr === 'under_budget'        && (!a.rent || a.rent > MAX_RENT)) return false;
     if (cr === 'over_budget'         && (!a.rent || a.rent <= MAX_RENT)) return false;
-    if (cr === 'commute_ok'          && (!a.commute || a.commute > MAX_COMMUTE)) return false;
+    if (cr === 'commute_ok'          && !commuteOk) return false;
     if (cr === 'has_promo'           && !a.promo) return false;
     if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
+    if (cr === 'near_miss'           && !isNearMiss(a)) return false;
+    if (cr === 'needs_verify'        && !(a.status !== 'toured' && a.rent && a.rent <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null || a.has_parking === null))) return false;
     return true;
   });
 
@@ -1024,7 +1043,7 @@ function renderTrends() {
   });
 
   datasets.push({
-    label: 'Budget ($3,400)',
+    label: `Budget ($${MAX_RENT.toLocaleString()})`,
     _fullName: '__budget__',
     _color: '#ef4444',
     data: allDates.map(() => MAX_RENT),
@@ -1260,9 +1279,41 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#apt-filter-wrap')) get('apt-dropdown')?.classList.add('hidden');
 });
 
+// ── Must-have amenity quick filters (combinable) ──
+const amenityFilters = { wd:false, ac:false, parking:false, hardwood:false };
+const AMEN_LABEL = { wd:'W/D', ac:'AC', parking:'Parking', hardwood:'Hardwood' };
+function toggleAmenity(k) { amenityFilters[k] = !amenityFilters[k]; updateAmenityChips(); applyFilters(); }
+function updateAmenityChips() {
+  document.querySelectorAll('.amen-chip').forEach(b => {
+    const on = amenityFilters[b.dataset.amen];
+    b.textContent = AMEN_LABEL[b.dataset.amen];
+    b.className = 'amen-chip px-2.5 py-1.5 text-xs rounded-lg border transition ' +
+      (on ? 'bg-blue-600 text-white border-blue-600 font-semibold' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50');
+  });
+}
+// Near miss = exactly ONE confirmed hard fail; every other must-have confirmed satisfied (so it's genuinely one thing away)
+function isNearMiss(a) {
+  const fails = [];
+  if (a.has_wd === false)                          fails.push('wd');
+  if (a.has_ac === false)                          fails.push('ac');
+  if (a.has_parking === false)                     fails.push('parking');
+  if (a.rent && a.rent > MAX_RENT && a.rent <= MAX_RENT + 200) fails.push('budget');
+  if (a.commute && a.commute > MAX_COMMUTE)        fails.push('commute');
+  if (fails.length !== 1) return false;
+  // The non-failing must-haves must be confirmed (not null/unknown)
+  if (!fails.includes('wd')      && a.has_wd      !== true) return false;
+  if (!fails.includes('ac')      && a.has_ac      !== true) return false;
+  if (!fails.includes('parking') && a.has_parking !== true) return false;
+  if (!fails.includes('budget')  && (!a.rent || a.rent > MAX_RENT)) return false;
+  if (!fails.includes('commute') && a.commute && a.commute > MAX_COMMUTE) return false;
+  return true;
+}
+
 function clearFilters() {
   get('search-input').value = ''; get('filter-status').value = 'all';
   get('filter-criteria').value = 'all'; get('sort-by').value = 'score_desc';
+  amenityFilters.wd = amenityFilters.ac = amenityFilters.parking = amenityFilters.hardwood = false;
+  updateAmenityChips();
   applyFilters();
 }
 function styleCheckbox(cbId, lblId) {
@@ -1804,6 +1855,7 @@ importList(SHORTLIST, 'shortlist');
 importList(CORPUS_LIST, 'corpus');
 importPrices();
 seedHistoricalPrices();
+updateAmenityChips();
 setTab('shortlist');
 
 geocodeAddress(OFFICE_ADDRESS).then(c => { if (c) { OFFICE.lat = c.lat; OFFICE.lng = c.lng; } });
