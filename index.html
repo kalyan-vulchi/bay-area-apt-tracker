@@ -234,6 +234,10 @@
         <div class="space-y-2 text-xs" id="summary-notable"></div>
       </div>
     </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <p class="text-sm font-semibold text-gray-900 mb-3">💡 Market Insights</p>
+      <div class="space-y-2 text-xs text-gray-700" id="summary-insights"></div>
+    </div>
   </div>
 </div>
 
@@ -1175,6 +1179,30 @@ function renderSummary() {
   const recentlyToured = apts.filter(a => a.status === 'toured').sort((a,b) => new Date(b.added) - new Date(a.added))[0];
   if (recentlyToured) notableParts.push(`<p>✅ Recently Toured: <strong>${recentlyToured.name}</strong></p>`);
 
+  // Market insights — biggest movers + best value (data-driven, refreshes every render)
+  const insights = [];
+  const movers = [];
+  apts.forEach(a => {
+    if (!a.price_history || a.price_history.length < 2) return;
+    const sorted = [...a.price_history].sort((x,y) => x.date.localeCompare(y.date));
+    const first = sorted[0].rent, last = sorted[sorted.length-1].rent;
+    if (first && last && first !== last) movers.push({ name: a.name, delta: last - first, from: first, to: last });
+  });
+  const drops = movers.filter(m => m.delta < 0).sort((a,b) => a.delta - b.delta);
+  const rises = movers.filter(m => m.delta > 0).sort((a,b) => b.delta - a.delta);
+  if (drops[0]) insights.push(`<p>📉 Biggest drop: <strong>${drops[0].name}</strong> down $${Math.abs(drops[0].delta).toLocaleString()} ($${drops[0].from.toLocaleString()} → $${drops[0].to.toLocaleString()})</p>`);
+  if (rises[0]) insights.push(`<p>📈 Biggest increase: <strong>${rises[0].name}</strong> up $${rises[0].delta.toLocaleString()} ($${rises[0].from.toLocaleString()} → $${rises[0].to.toLocaleString()})</p>`);
+  // Best value: qualifying apt with lowest rent
+  const qualifying = apts.filter(a => score(a).qualifies && a.rent).sort((a,b) => a.rent - b.rent);
+  if (qualifying[0]) insights.push(`<p>⭐ Best value (meets all musts): <strong>${qualifying[0].name}</strong> at $${qualifying[0].rent.toLocaleString()}${qualifying[0].commute ? `, ${qualifying[0].commute} min` : ''}</p>`);
+  else insights.push(`<p>⚠️ No apartment currently meets all must-haves within $${MAX_RENT.toLocaleString()} (W/D + AC + free parking).</p>`);
+  // Active promos count
+  const promoCount = apts.filter(a => a.promo).length;
+  if (promoCount > 0) insights.push(`<p>🏷️ ${promoCount} listing${promoCount>1?'s have':' has'} an active promotion right now.</p>`);
+  // Toured progress
+  const touredCount = apts.filter(a => a.status === 'toured').length;
+  if (total > 0) insights.push(`<p>🚶 Toured ${touredCount} of ${total} (${Math.round(touredCount/total*100)}%) — ${total - touredCount} still to visit.</p>`);
+
   // Update UI
   set('summary-total', total.toString());
   set('summary-within-budget', withBudget.toString());
@@ -1189,6 +1217,7 @@ function renderSummary() {
   set('summary-range-spread', `Spread: $${spread.toLocaleString()}`);
   get('summary-status-dist').innerHTML = statusHtml;
   get('summary-notable').innerHTML = notableParts.join('');
+  get('summary-insights').innerHTML = insights.join('');
 }
 
 function filterAptDropdown() {
@@ -1249,168 +1278,46 @@ get('modal').addEventListener('click', e => { if (e.target === get('modal')) clo
 // SHORTLIST  (updated 2026-06-04 — availability refresh)
 // ═══════════════════════════════════════════════════════
 const SHORTLIST = [
-  { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
-    url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/', lat:37.4003398, lng:-121.9245178,
-    rent:3262, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:'Up to 2 Weeks Free on select floor plans',
-    plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
+  { name:'Parallel', address:'1141 W Olive Avenue, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/parallel#pricingAndFloorPlanBox', lat:37.3747455, lng:-122.0533144,
+    rent:3116, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing added — needs verification.' },
+
+  { name:'The Podium', address:'10100 Torre Ave, Cupertino, CA 95014',
+    url:'https://www.deanzaproperties.com/south-bay-area/the-podium/#floorplans', lat:37.3220446, lng:-122.0265078,
+    rent:2950, sqft:805, available:'2026-07-04', commute:25, has_wd:null, has_ac:null, has_parking:false, has_hardwood:null,
+    plans:[{label:'Plan H',sqft:805,rent:3185,available:'2026-07-04'}],
+    notes:'1BR Plan H: 805 sqft, $3,185-$3,385, available Jul 4. W/D in some units — verify. AC unconfirmed. Parking garage — paid (not included). NO PETS. Near Apple Park, De Anza College, Cupertino Library. De Anza Properties.' },
+
+  { name:'City Gate at Cupertino', address:'5608 Stevens Creek Blvd, Cupertino, CA 95014',
+    url:'https://www.equityapartments.com/san-francisco-bay/cupertino/city-gate-at-cupertino-apartments##bedroom-type-section-1', lat:37.3225492, lng:-122.0018172,
+    rent:3208, sqft:728, available:'2026-06-30', commute:24, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    plans:[{label:'1 Bed A',sqft:728,rent:3253,available:'2026-07-17'},{label:'1 Bed A',sqft:728,rent:3256,available:'2026-06-30'},{label:'1 Bed B',sqft:739,rent:3253,available:'2026-07-17'},{label:'1 Bed B',sqft:739,rent:3287,available:'2026-07-03'}],
+    notes:'1BR from $3,253 (728-739 sqft), available late June/July. In-unit W/D + AC confirmed. Renovated, smart home features, courtyard views. Underground parking included — confirm if free. Navajo flooring. Equity Apartments. Cupertino.' },
+
+  { name:'The Verdant', address:'3700 Casa Verde St, San Jose, CA 95134',
+    url:'https://www.verdant-apts.com/ca/san-jose/floorplans', lat:37.413064, lng:-121.939512,
+    rent:3126, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    plans:[{label:'A1',sqft:681,rent:3113,available:'2026-06-01'},{label:'A2',sqft:759,rent:3236,available:'2026-06-01'},{label:'A3',sqft:830,rent:3260,available:'2026-06-06'}],
+    notes:'1BR from $3,113 (A1, 681 sqft, available now). In-unit W/D + central AC confirmed. Gated garage parking included (free). Village-style community, North San Jose. Flooring unconfirmed.' },
+
+  { name:'Sunnyvale Town Center', address:'201 W California Ave, Sunnyvale, CA 94086',
+    url:'https://www.sunnyvaletowncenterapartments.com/floorplans?Beds=1', lat:37.3814734, lng:-122.0293963,
+    rent:2795, sqft:610, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    promo:'Up to $1,000 off select units',
+    notes:'1BR from ~$2,495 (550 sqft) or Large 1BR 610-650 sqft. In-unit W/D available. AC confirmed. Covered/carport parking — cost unknown, verify. Hardwood floor options. Very close to office (~8 min). Up to $1,000 off select units. Call (408) 353-0972.' },
+
+  { name:'Bella Vista Apartments', address:'1500 Vista Club Cir, Santa Clara, CA 95054',
+    url:'https://www.bellavista-apartments.com/apartments/ca/santa-clara/floor-plans#/?beds=1', lat:37.402502, lng:-121.953418,
+    rent:3018, sqft:null, available:null, commute:12, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'1BR from $2,733, 10 floor plans ranging 509-1,175 sqft. Gated community near Levi\'s Stadium, North Santa Clara. All amenities (W/D, AC, parking) unconfirmed — verify. Call (408) 496-6300.' },
+
+  { name:'Villas on the Boulevard', address:'2615 El Camino Real, Santa Clara, CA 95051',
+    url:'https://www.villasontheboulevard.com/floorplans?Beds=1', lat:37.352851, lng:-121.9744293,
+    rent:3631, sqft:758, available:null, commute:14, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
-    notes:'TOURED Jun 2 — excellent apartments, amenities, and neighborhood. Too pricey. AVOID unit 107 (red flag). In-unit W/D confirmed. Central AC. LVP floors. 2-level gated garage. Shea Properties. Reviews: 530+ 5-star Google reviews, safe community, responsive maintenance. Watch out for car break-ins (reported), high move-out charges, and steep rent increases at renewal.' },
-
-  { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
-    url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/', lat:37.4030882, lng:-121.9253707,
-    rent:3399, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
-    plans:[{label:'Angel Falls',sqft:725,rent:2967,available:null}],
-    notes:'1BR from ~$2,614 (725 sqft) — notable drop from $2,967; verify current pricing on site. 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex. Refreshed 2026-06-01.' },
-
-  { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
-    url:'https://aireliving.com/', lat:37.4051669, lng:-121.9314879,
-    rent:3416, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:'2 Weeks Free on Select Apartments',
-    plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:'2026-06-02'},{label:'A27',sqft:979,rent:3752,available:null}],
-    notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01. OVER BUDGET as of 2026-06-02: lowest 1BR now $3,415.' },
-
-  { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
-    url:'https://www.venue-apts.com/', lat:37.412722, lng:-121.9392808,
-    rent:3275, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
-    plans:[{label:'A1',sqft:784,rent:3357,available:'2026-08-04'},{label:'A2',sqft:824,rent:3397,available:null},{label:'A3',sqft:875,rent:3522,available:'2026-07-11'},{label:'A4',sqft:1022,rent:3300,available:null}],
-    notes:'LEED Gold. 1BR from $3,263 (was $3,251). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free. Refreshed 2026-06-01.' },
-
-  { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
-    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino', lat:37.3330142, lng:-122.038348,
-    rent:3000, sqft:785, available:null, commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
-    status:'toured',
-    promo:'Up to 2 Weeks Free on Select Apartments',
-    plans:[{label:'Plan 1D - Classic w/ WD',sqft:785,rent:3118,available:null},{label:'Plan 1B - Renovated',sqft:643,rent:3139,available:'2026-06-03'},{label:'Plan 1C - Renovated w/ WD',sqft:695,rent:3241,available:null},{label:'Plan 1B - Renovated w/ WD',sqft:643,rent:3314,available:'2026-07-02'}],
-    notes:'TOURED Jun 1 — not impressed, not worth it. 3 tiers: Classic $2,700 (no W/D, no AC); Renovated $3,139 (window AC only, no W/D — fails both requirements); Renovated split AC + W/D $3,500 (over budget by $100). No plan within budget meets W/D + AC requirements. Reviews: thin walls, noise from upstairs neighbors, Hwy 280 traffic noise audible, fast driving in complex. Prometheus.' },
-
-  { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
-    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham', lat:37.3375762, lng:-122.0292813,
-    rent:3522, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:'2 Weeks Free on Select Apartments',
-    plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:'2026-06-02'},{label:'Plan 1BR',sqft:750,rent:3397,available:'2026-06-02'},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
-    status:'toured',
-    notes:'TOURED Jun 3 — decent interiors, okish community, rents are high for what you get. In-unit W/D, hardwood floors, saltwater pool. Carport/garage parking included. Prometheus.' },
-
-  { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
-    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce', lat:37.3654247, lng:-122.0267622,
-    rent:3280, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
-    status:'toured',
-    plans:[{label:'Plan 1A',sqft:546,rent:2948,available:null},{label:'Plan 1D',sqft:676,rent:3044,available:null},{label:'Plan 1C',sqft:572,rent:3131,available:null},{label:'Plan 1B',sqft:570,rent:3206,available:null}],
-    notes:'TOURED Jun 3 — great community and amenities but underwhelming floor plans. 2 split ACs confirmed. Modern appliances but NO dishwasher. In-unit W/D confirmed. Parking not confirmed free — verify. 21-acre campus, 3 pools, nice grounds. Reviews: thin walls/noise from upstairs (especially lower floors), pest reports (bed bugs, cockroaches, rats), management described as rude by some reviewers, good amenities maintained. Prometheus.' },
-
-  { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
-    url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone', lat:37.4036464, lng:-122.095064,
-    rent:3640, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
-    plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
-    notes:'FAILS W/D: shared laundry only. 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
-
-  { name:'Timberleaf Apartments', address:'2147 Newhall St, Santa Clara, CA 95050',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf', lat:37.3377674, lng:-121.9410545,
-    rent:3417, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
-    promo:'4 Weeks Free on Select Apartments',
-    plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
-    notes:'1BR from $3,026 (700 sqft, confirmed). In-unit stackable W/D confirmed. AC confirmed. Parking fee unclear — verify. Hardwood floors. 4 Weeks Free on select units. Prometheus. Refreshed 2026-06-01.' },
-
-  { name:'Alderwood Apartments', address:'900 Pepper Tree Ln, Santa Clara, CA 95051',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/alderwood', lat:37.341967, lng:-121.982571,
-    rent:3377, sqft:700, available:null, commute:13, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    promo:'3 Weeks Free on Select Apartments',
-    plans:[{label:'Plan 1AR',sqft:700,rent:3215,available:null}],
-    status:'toured',
-    has_wd:true,
-    notes:'TOURED Jun 2 — amazing community, great apartments. Split AC in living room confirmed. In-unit W/D confirmed. Hardwood floors confirmed. Free parking confirmed. CONSTRUCTION: new complex being built next door (old Kaiser hospital site) — expect noise/dust for next 6+ months. Promotions likely coming soon. Reviews: construction noise ongoing, thin walls between units, water heater noise issues reported, otherwise well-liked community. Prometheus.' },
-
-  { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
-    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber', lat:37.3587631, lng:-122.0182537,
-    rent:3368, sqft:799, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    status:'toured',
-    promo:'4 Weeks Free on Select Apartments',
-    plans:[{label:'Plan 1BR',sqft:799,rent:3186,available:null},{label:'Plan 1CR',sqft:725,rent:3228,available:null}],
-    notes:'TOURED Jun 1 — great apartments but prices too high. In-unit W/D confirmed (leasing). AC confirmed. 1BR from $3,166-$3,368. Covered parking included. Hardwood confirmed. 3 separate buildings (Oak, West Oak, Umber) across 6 acres. Reviews: highly responsive management (Miguel praised), maintenance within an hour, occasional ants/spiders reported. Prometheus.' },
-
-  { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central', lat:37.3500621, lng:-121.9465888,
-    rent:3253, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
-    plans:[{label:'Plan 1A',sqft:662,rent:2993,available:null}],
-    notes:'1BR from $3,254 (was $3,159 — increased). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus. Refreshed 2026-06-01.' },
-
-  { name:'Cupertino City Center', address:'20350 Stevens Creek Blvd, Cupertino, CA 95014',
-    url:'https://prometheusapartments.com/ca/cupertino-apartments/cupertino-city-center', lat:37.3212816, lng:-122.0294461,
-    rent:3152, sqft:668, available:null, commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
-    status:'toured',
-    plans:[{label:'Plan 1C',sqft:647,rent:3178,available:null},{label:'Plan 1D',sqft:668,rent:2951,available:null},{label:'Plan 1A',sqft:701,rent:3200,available:null}],
-    notes:'TOURED Jun 1 — good impression. FAILS W/D: shared laundry only (confirmed on tour). Split AC in living room confirmed. Hardwood floors entire unit confirmed. Walk-in closet + attached bathroom. Courtyard view. Good neighborhood. Open parking in garage (included). Reviews: concrete floors = good sound insulation between units, early morning landscaping noise (leaf blowers), some management complaints. Prometheus.' },
-
-  { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
-    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire', lat:37.3877562, lng:-122.0310719,
-    rent:3247, sqft:710, available:'2026-06-09', commute:9, has_wd:false, has_ac:true, has_parking:true, has_hardwood:false,
-    promo:null,
-    plans:[{label:'Plan 1A',sqft:710,rent:2629,available:'2026-06-09'}],
-    notes:'1BR from $2,799 (was $2,889). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex. Refreshed 2026-06-01.' },
-
-
-  { name:'Sage at Cupertino', address:'175 Calvert Dr, Cupertino, CA 95014',
-    url:'https://www.essexapartmenthomes.com/apartments/cupertino/sage-at-cupertino', lat:37.3207213, lng:-122.0022998,
-    rent:3087, sqft:685, available:'2026-06-05', commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
-    plans:[{label:'Plan 1A',sqft:685,rent:2969,available:null}],
-    notes:'1BR from $2,819 (verify current pricing), available Jun 5. W/D in select units only — request specifically. Central AC. Parking included. LVP flooring. Near De Anza. Essex. Refreshed 2026-06-01.' },
-
-  { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
-    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square', lat:37.381926, lng:-122.0449243,
-    rent:3257, sqft:735, available:null, commute:11, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    status:'toured',
-    promo:null,
-    plans:[{label:'1BR/1BA',sqft:735,rent:3067,available:null}],
-    notes:'TOURED Jun 1. Split AC in both living room + bedroom confirmed. Renovated. Gas stove. Good patio. Units 147 and 69 are the best ones. 1 assigned parking spot included. Guest parking on street. NOISE CONCERNS: Caltrain audible from unit (close to tracks). Reviews: upstairs neighbor noise reported by multiple residents — these are ground-floor units so risk is real. Early AM construction/leaf blower noise. Package theft reported, security gate broken at times. Significant rent increase at renewal (reports of $300-800 jumps). Essex.' },
-
-  { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen', lat:37.3477, lng:-121.9703,
-    rent:3232, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
-    status:'toured',
-    promo:'1 Week Free on Select Apartments',
-    plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
-    notes:'TOURED Jun 2 — good apartments but out of budget when all costs factored in. In-unit W/D confirmed. Split AC in living room confirmed. NOISE RISK: units near Lawrence Expressway have traffic noise — request a unit away from it. Assigned + open parking available. Heated saltwater pool. Prometheus.' },
-
-  { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
-    url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/', lat:37.4003031, lng:-122.0163202,
-    rent:3373, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
-    status:'toured',
-    plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
-    notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. NO AC (central heater only) — portable AC rental +$40/mo available for summer. Sonoma: shared laundry per building, NO in-unit W/D. Walk-in closet. Santa Barbara W/D unconfirmed — verify. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
-
-  { name:'Epic Apartments', address:'600 Epic Way, San Jose, CA 95134',
-    url:'https://www.essexapartmenthomes.com/apartments/san-jose/epic', lat:37.3988114, lng:-121.9213079,
-    rent:3147, sqft:739, available:'2026-06-07', commute:16, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    plans:[{label:'Chronicle',sqft:739,rent:3107,available:null},{label:'Saga',sqft:778,rent:3107,available:null},{label:'Chronicle',sqft:739,rent:3177,available:'2026-06-07'},{label:'Saga',sqft:778,rent:3257,available:null}],
-    status:'toured',
-    notes:'TOURED Jun 2 — bad maintenance in common spaces, courtyard views unimpressive, average interiors. Units seen/available: 224, 312, 316, 352, 544, 592, 594. In-unit W/D + AC confirmed. Wood-style flooring. Parking included (assigned or open — confirm type). Reviews: 2.7 stars Birdeye (418 reviews), thin walls/noise, ongoing construction noise, management complaints, maintenance in units reportedly OK but common areas neglected. Essex.' },
-
-  { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
-    url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments', lat:37.3992024, lng:-121.9564515,
-    rent:3317, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
-    plans:[{label:'1 Bed A',sqft:790,rent:2922,available:'2026-06-05'}],
-    notes:'1BR: 790 sqft, $3,297 (confirmed). Available Jun 5. In-unit W/D + central AC confirmed. Private garage — confirm if included in rent. Hard surface flooring in renovated units. Equity Apartments. Refreshed 2026-06-01.' },
-
-  { name:'Marina Cove', address:'3480 Granada Ave, Santa Clara, CA 95051',
-    url:'https://www.essexapartmenthomes.com/apartments/santa-clara/marina-cove/', lat:37.349008, lng:-121.9924443,
-    rent:3147, sqft:725, available:'2026-07-07', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
-    plans:[{label:'1BR',sqft:725,rent:3117,available:'2026-07-07'},{label:'1BR',sqft:720,rent:3159,available:'2026-07-04'},{label:'1BR',sqft:725,rent:3269,available:'2026-06-25'},{label:'1BR',sqft:720,rent:3277,available:'2026-06-21'}],
-    notes:'1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
-
-  { name:'Domicilio', address:'431 El Camino Real, Santa Clara, CA 95050',
-    url:'https://www.domicilioapts.com/floorplans?Beds=1', lat:37.3471848, lng:-121.933128,
-    rent:3298, sqft:871, available:'2026-06-25', commute:17, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
-    promo:'2 Weeks Free — move in by Jun 30',
-    plans:[{label:'Ponti',sqft:871,rent:3298,available:null},{label:'Ponti 1214',sqft:900,rent:3439,available:'2026-06-01'},{label:'Ponti 1302',sqft:900,rent:3444,available:'2026-06-25'}],
-    notes:'1BR Ponti plan: 871-900 sqft, from $3,298. Available now (1214) and Jun 25 (1302). Full-size in-unit W/D. AC confirmed. Wood-style flooring. Underground parking available — cost unknown, verify. Private balcony/patio, granite countertops, stainless appliances. Resort pool/spa, theater, 24hr gym. Near Santa Clara Transit Center (Caltrain/VTA). 2 Weeks Free if moved in by Jun 30. Greystar.' },
-
-  { name:'Riley Square', address:'3707 Poinciana Dr, Santa Clara, CA 95051',
-    url:'https://www.essexapartmenthomes.com/apartments/santa-clara/riley-square/', lat:37.359603, lng:-121.9991017,
-    rent:3017, sqft:630, available:null, commute:15, has_wd:true, has_ac:false, has_parking:null, has_hardwood:true,
-    status:'toured',
-    plans:[{label:'1BR',sqft:630,rent:3017,available:'2026-06-01'},{label:'1BR',sqft:630,rent:3017,available:'2026-06-19'}],
-    notes:'TOURED Jun 4 — decent apartments, average community. FAILS AC: window AC in living room only (not split/central). In-unit W/D confirmed (located inside bathroom in bedroom — unusual layout). Good kitchen. Good sofa/TV space. Walk-in closet. Bathroom inside bedroom. Unit 73 better than 68. Good option only if rent drops below $2,750. Parking: used to be free but reviews say now paid — verify current policy. Reviews: 2.7 stars (72), train/crow/street noise, water shutoffs ~2x/month, car break-ins (4 reported), excessive move-out charges, parking now paid. Essex.' },
+    plans:[{label:'1A',sqft:758,rent:3208,available:'2026-06-01'}],
+    notes:'TOURED Jun 4 — good community and apartments. Central AC confirmed. In-unit W/D confirmed (in bedroom — unusual placement). 1 assigned parking included. Extra parking $125/mo. Guest parking outside only. WARNING: deposit non-refundable if application withdrawn. Difficult exit onto El Camino. Quartz countertops, smart home tech, private stoops/balconies. Reviews: 2.9 stars (114), unresponsive management, significant rent increase at renewal, low-end appliances, parking theft in garages despite gating, hallway cleanliness issues, pool/outdoor amenities praised.' },
 
   { name:'Halford Gardens', address:'1901 Halford Ave, Santa Clara, CA 95051',
     url:'https://www.halfordapartments.com/apartments/ca/santa-clara/floor-plans-virtual-tours#/?beds=1', lat:37.3581777, lng:-121.998004,
@@ -1418,54 +1325,171 @@ const SHORTLIST = [
     promo:'$1,000 off — Look & Lease',
     notes:'1BR from $2,795-$2,995. W/D confirmed for townhomes — verify for regular apartments. No pets allowed. $1,000 off Look & Lease promo. Call (650) 405-4766 to verify AC, parking, W/D for standard units.' },
 
-  { name:'Villas on the Boulevard', address:'2615 El Camino Real, Santa Clara, CA 95051',
-    url:'https://www.villasontheboulevard.com/floorplans', lat:37.352851, lng:-121.9744293,
-    rent:3631, sqft:758, available:null, commute:14, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+  { name:'Riley Square', address:'3707 Poinciana Dr, Santa Clara, CA 95051',
+    url:'https://www.essexapartmenthomes.com/apartments/santa-clara/riley-square/floor-plans-and-pricing', lat:37.359603, lng:-121.9991017,
+    rent:3017, sqft:630, available:null, commute:15, has_wd:true, has_ac:false, has_parking:null, has_hardwood:true,
     status:'toured',
-    plans:[{label:'1A',sqft:758,rent:3208,available:'2026-06-01'}],
-    notes:'TOURED Jun 4 — good community and apartments. Central AC confirmed. In-unit W/D confirmed (in bedroom — unusual placement). 1 assigned parking included. Extra parking $125/mo. Guest parking outside only. WARNING: deposit non-refundable if application withdrawn. Difficult exit onto El Camino. Quartz countertops, smart home tech, private stoops/balconies. Reviews: 2.9 stars (114), unresponsive management, significant rent increase at renewal, low-end appliances, parking theft in garages despite gating, hallway cleanliness issues, pool/outdoor amenities praised.' },
+    plans:[{label:'1BR',sqft:630,rent:3017,available:'2026-06-01'},{label:'1BR',sqft:630,rent:3017,available:'2026-06-19'}],
+    notes:'TOURED Jun 4 — decent apartments, average community. FAILS AC: window AC in living room only (not split/central). In-unit W/D confirmed (located inside bathroom in bedroom — unusual layout). Good kitchen. Good sofa/TV space. Walk-in closet. Bathroom inside bedroom. Unit 73 better than 68. Good option only if rent drops below $2,750. Parking: used to be free but reviews say now paid — verify current policy. Reviews: 2.7 stars (72), train/crow/street noise, water shutoffs ~2x/month, car break-ins (4 reported), excessive move-out charges, parking now paid. Essex.' },
 
-  { name:'Bella Vista Apartments', address:'1500 Vista Club Cir, Santa Clara, CA 95054',
-    url:'https://www.bellavista-apartments.com/apartments/ca/santa-clara/floor-plans#/?beds=1', lat:37.402502, lng:-121.953418,
-    rent:3018, sqft:null, available:null, commute:12, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'1BR from $2,733, 10 floor plans ranging 509-1,175 sqft. Gated community near Levi\'s Stadium, North Santa Clara. All amenities (W/D, AC, parking) unconfirmed — verify. Call (408) 496-6300.' },
-
-  { name:'Sunnyvale Town Center', address:'201 W California Ave, Sunnyvale, CA 94086',
-    url:'https://www.sunnyvaletowncenterapartments.com/floorplans/large-one-bedroom-one-bath?Beds=1', lat:37.3814734, lng:-122.0293963,
-    rent:2795, sqft:610, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
-    promo:'Up to $1,000 off select units',
-    notes:'1BR from ~$2,495 (550 sqft) or Large 1BR 610-650 sqft. In-unit W/D available. AC confirmed. Covered/carport parking — cost unknown, verify. Hardwood floor options. Very close to office (~8 min). Up to $1,000 off select units. Call (408) 353-0972.' },
-
-  { name:'The Verdant', address:'3700 Casa Verde St, San Jose, CA 95134',
-    url:'https://www.verdant-apts.com/ca/san-jose/floorplans/a1', lat:37.413064, lng:-121.939512,
-    rent:3104, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
-    plans:[{label:'A1',sqft:681,rent:3113,available:'2026-06-01'},{label:'A2',sqft:759,rent:3236,available:'2026-06-01'},{label:'A3',sqft:830,rent:3260,available:'2026-06-06'}],
-    notes:'1BR from $3,113 (A1, 681 sqft, available now). In-unit W/D + central AC confirmed. Gated garage parking included (free). Village-style community, North San Jose. Flooring unconfirmed.' },
-
-  { name:'City Gate at Cupertino', address:'5608 Stevens Creek Blvd, Cupertino, CA 95014',
-    url:'https://www.equityapartments.com/san-francisco-bay/cupertino/city-gate-at-cupertino-apartments', lat:37.3225492, lng:-122.0018172,
-    rent:3223, sqft:728, available:'2026-06-30', commute:24, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
-    plans:[{label:'1 Bed A',sqft:728,rent:3253,available:'2026-07-17'},{label:'1 Bed A',sqft:728,rent:3256,available:'2026-06-30'},{label:'1 Bed B',sqft:739,rent:3253,available:'2026-07-17'},{label:'1 Bed B',sqft:739,rent:3287,available:'2026-07-03'}],
-    notes:'1BR from $3,253 (728-739 sqft), available late June/July. In-unit W/D + AC confirmed. Renovated, smart home features, courtyard views. Underground parking included — confirm if free. Navajo flooring. Equity Apartments. Cupertino.' },
-
-  { name:'The Podium', address:'10100 Torre Ave, Cupertino, CA 95014',
-    url:'https://www.deanzaproperties.com/south-bay-area/the-podium/#floorplans', lat:37.3220446, lng:-122.0265078,
-    rent:3185, sqft:805, available:'2026-07-04', commute:25, has_wd:null, has_ac:null, has_parking:false, has_hardwood:null,
-    plans:[{label:'Plan H',sqft:805,rent:3185,available:'2026-07-04'}],
-    notes:'1BR Plan H: 805 sqft, $3,185-$3,385, available Jul 4. W/D in some units — verify. AC unconfirmed. Parking garage — paid (not included). NO PETS. Near Apple Park, De Anza College, Cupertino Library. De Anza Properties.' },
+  { name:'Domicilio', address:'431 El Camino Real, Santa Clara, CA 95050',
+    url:'https://www.domicilioapts.com/floorplans?Beds=1', lat:37.3471848, lng:-121.933128,
+    rent:3372, sqft:871, available:'2026-06-25', commute:17, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    promo:'2 Weeks Free — move in by Jun 30',
+    plans:[{label:'Ponti',sqft:871,rent:3298,available:null},{label:'Ponti 1214',sqft:900,rent:3439,available:'2026-06-01'},{label:'Ponti 1302',sqft:900,rent:3444,available:'2026-06-25'}],
+    notes:'1BR Ponti plan: 871-900 sqft, from $3,298. Available now (1214) and Jun 25 (1302). Full-size in-unit W/D. AC confirmed. Wood-style flooring. Underground parking available — cost unknown, verify. Private balcony/patio, granite countertops, stainless appliances. Resort pool/spa, theater, 24hr gym. Near Santa Clara Transit Center (Caltrain/VTA). 2 Weeks Free if moved in by Jun 30. Greystar.' },
 
   { name:'River Terrace', address:'730 Agnew Rd, Santa Clara, CA 95054',
-    url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/', lat:37.3942417, lng:-121.9488377,
+    url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/apartments-pricing/#/?sort=rent&sortdir=asc&beds=1', lat:37.3942417, lng:-121.9488377,
     rent:3051, sqft:null, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     status:'toured',
     promo:'$500 off first month',
     notes:'TOURED Jun 3 — unit 213 is the only good option (slight road noise). Central AC + in-unit W/D confirmed. Good kitchen design. VERIFY: is unit 213 renovated? Ask leasing for specific amenities/finishes on 213. PAID PARKING (required): reserved garage $95/mo, additional space $90/mo, premium $105/mo. Walk-in closets, patio/balcony, granite countertops. No current availability — sign up for alerts. Reviews: UDR charges heavily on move-out, parking/locker fees extra, occasional marijuana smell weekends, theft reported, maintenance concerns. UDR.' },
 
-  { name:'Parallel', address:'1141 W Olive Avenue, Sunnyvale, CA 94086',
-    url:'', lat:37.3747455, lng:-122.0533144,
-    rent:3116, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    status:'not_visited',
-    notes:'New listing added — needs verification.' }
+  { name:'Marina Cove', address:'3480 Granada Ave, Santa Clara, CA 95051',
+    url:'https://www.essexapartmenthomes.com/apartments/santa-clara/marina-cove/floor-plans-and-pricing', lat:37.349008, lng:-121.9924443,
+    rent:3087, sqft:725, available:'2026-07-07', commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    plans:[{label:'1BR',sqft:725,rent:3117,available:'2026-07-07'},{label:'1BR',sqft:720,rent:3159,available:'2026-07-04'},{label:'1BR',sqft:725,rent:3269,available:'2026-06-25'},{label:'1BR',sqft:720,rent:3277,available:'2026-06-21'}],
+    notes:'1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
+
+  { name:'Epic Apartments', address:'600 Epic Way, San Jose, CA 95134',
+    url:'https://www.essexapartmenthomes.com/apartments/san-jose/epic', lat:37.3988114, lng:-121.9213079,
+    rent:3137, sqft:739, available:'2026-06-07', commute:16, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    plans:[{label:'Chronicle',sqft:739,rent:3107,available:null},{label:'Saga',sqft:778,rent:3107,available:null},{label:'Chronicle',sqft:739,rent:3177,available:'2026-06-07'},{label:'Saga',sqft:778,rent:3257,available:null}],
+    notes:'TOURED Jun 2 — bad maintenance in common spaces, courtyard views unimpressive, average interiors. Units seen/available: 224, 312, 316, 352, 544, 592, 594. In-unit W/D + AC confirmed. Wood-style flooring. Parking included (assigned or open — confirm type). Reviews: 2.7 stars Birdeye (418 reviews), thin walls/noise, ongoing construction noise, management complaints, maintenance in units reportedly OK but common areas neglected. Essex.' },
+
+  { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
+    url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments##bedroom-type-section-1', lat:37.3992024, lng:-121.9564515,
+    rent:3307, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    plans:[{label:'1 Bed A',sqft:790,rent:2922,available:'2026-06-05'}],
+    notes:'1BR: 790 sqft, $3,297 (confirmed). Available Jun 5. In-unit W/D + central AC confirmed. Private garage — confirm if included in rent. Hard surface flooring in renovated units. Equity Apartments. Refreshed 2026-06-01.' },
+
+  { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
+    url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
+    rent:3373, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
+    status:'toured',
+    plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
+    notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. NO AC (central heater only) — portable AC rental +$40/mo available for summer. Sonoma: shared laundry per building, NO in-unit W/D. Walk-in closet. Santa Barbara W/D unconfirmed — verify. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
+
+  { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
+    rent:3232, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    status:'toured',
+    promo:'1 Week Free on Select Apartments',
+    plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
+    notes:'TOURED Jun 2 — good apartments but out of budget when all costs factored in. In-unit W/D confirmed. Split AC in living room confirmed. NOISE RISK: units near Lawrence Expressway have traffic noise — request a unit away from it. Assigned + open parking available. Heated saltwater pool. Prometheus.' },
+
+  { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
+    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square', lat:37.381926, lng:-122.0449243,
+    rent:3257, sqft:735, available:null, commute:11, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    plans:[{label:'1BR/1BA',sqft:735,rent:3067,available:null}],
+    notes:'TOURED Jun 1. Split AC in both living room + bedroom confirmed. Renovated. Gas stove. Good patio. Units 147 and 69 are the best ones. 1 assigned parking spot included. Guest parking on street. NOISE CONCERNS: Caltrain audible from unit (close to tracks). Reviews: upstairs neighbor noise reported by multiple residents — these are ground-floor units so risk is real. Early AM construction/leaf blower noise. Package theft reported, security gate broken at times. Significant rent increase at renewal (reports of $300-800 jumps). Essex.' },
+
+  { name:'Sage at Cupertino', address:'175 Calvert Dr, Cupertino, CA 95014',
+    url:'https://www.essexapartmenthomes.com/apartments/cupertino/sage-at-cupertino/floor-plans-and-pricing', lat:37.3207213, lng:-122.0022998,
+    rent:3237, sqft:685, available:'2026-06-05', commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    plans:[{label:'Plan 1A',sqft:685,rent:2969,available:null}],
+    notes:'1BR from $2,819 (verify current pricing), available Jun 5. W/D in select units only — request specifically. Central AC. Parking included. LVP flooring. Near De Anza. Essex. Refreshed 2026-06-01.' },
+
+  { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
+    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire/floor-plans-and-pricing', lat:37.3877562, lng:-122.0310719,
+    rent:3239, sqft:710, available:'2026-06-09', commute:9, has_wd:false, has_ac:true, has_parking:true, has_hardwood:false,
+    plans:[{label:'Plan 1A',sqft:710,rent:2629,available:'2026-06-09'}],
+    notes:'1BR from $2,799 (was $2,889). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex. Refreshed 2026-06-01.' },
+
+  { name:'Cupertino City Center', address:'20350 Stevens Creek Blvd, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/cupertino-city-center#pricingAndFloorPlanBox', lat:37.3212816, lng:-122.0294461,
+    rent:3152, sqft:668, available:null, commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    plans:[{label:'Plan 1C',sqft:647,rent:3178,available:null},{label:'Plan 1D',sqft:668,rent:2951,available:null},{label:'Plan 1A',sqft:701,rent:3200,available:null}],
+    notes:'TOURED Jun 1 — good impression. FAILS W/D: shared laundry only (confirmed on tour). Split AC in living room confirmed. Hardwood floors entire unit confirmed. Walk-in closet + attached bathroom. Courtyard view. Good neighborhood. Open parking in garage (included). Reviews: concrete floors = good sound insulation between units, early morning landscaping noise (leaf blowers), some management complaints. Prometheus.' },
+
+  { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central#pricingAndFloorPlanBox', lat:37.3500621, lng:-121.9465888,
+    rent:3284, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    plans:[{label:'Plan 1A',sqft:662,rent:2993,available:null}],
+    notes:'1BR from $3,254 (was $3,159 — increased). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus. Refreshed 2026-06-01.' },
+
+  { name:'Oak & Umber Apartments', address:'913 Gail Ave, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/oak-umber#pricingAndFloorPlanBox', lat:37.3587631, lng:-122.0182537,
+    rent:3353, sqft:799, available:null, commute:12, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    promo:'4 Weeks Free on Select Apartments',
+    plans:[{label:'Plan 1BR',sqft:799,rent:3186,available:null},{label:'Plan 1CR',sqft:725,rent:3228,available:null}],
+    notes:'TOURED Jun 1 — great apartments but prices too high. In-unit W/D confirmed (leasing). AC confirmed. 1BR from $3,166-$3,368. Covered parking included. Hardwood confirmed. 3 separate buildings (Oak, West Oak, Umber) across 6 acres. Reviews: highly responsive management (Miguel praised), maintenance within an hour, occasional ants/spiders reported. Prometheus.' },
+
+  { name:'Alderwood Apartments', address:'900 Pepper Tree Ln, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/alderwood#pricingAndFloorPlanBox', lat:37.341967, lng:-121.982571,
+    rent:3368, sqft:700, available:null, commute:13, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    promo:'3 Weeks Free on Select Apartments',
+    plans:[{label:'Plan 1AR',sqft:700,rent:3215,available:null}],
+    notes:'TOURED Jun 2 — amazing community, great apartments. Split AC in living room confirmed. In-unit W/D confirmed. Hardwood floors confirmed. Free parking confirmed. CONSTRUCTION: new complex being built next door (old Kaiser hospital site) — expect noise/dust for next 6+ months. Promotions likely coming soon. Reviews: construction noise ongoing, thin walls between units, water heater noise issues reported, otherwise well-liked community. Prometheus.' },
+
+  { name:'Timberleaf Apartments', address:'2147 Newhall St, Santa Clara, CA 95050',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf#pricingAndFloorPlanBox', lat:37.3377674, lng:-121.9410545,
+    rent:3418, sqft:700, available:null, commute:20, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    promo:'4 Weeks Free on Select Apartments',
+    plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
+    notes:'1BR from $3,026 (700 sqft, confirmed). In-unit stackable W/D confirmed. AC confirmed. Parking fee unclear — verify. Hardwood floors. 4 Weeks Free on select units. Prometheus. Refreshed 2026-06-01.' },
+
+  { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
+    url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone#pricingAndFloorPlanBox', lat:37.4036464, lng:-122.095064,
+    rent:3660, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
+    notes:'FAILS W/D: shared laundry only. 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
+
+  { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce#pricingAndFloorPlanBox', lat:37.3654247, lng:-122.0267622,
+    rent:3280, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    status:'toured',
+    plans:[{label:'Plan 1A',sqft:546,rent:2948,available:null},{label:'Plan 1D',sqft:676,rent:3044,available:null},{label:'Plan 1C',sqft:572,rent:3131,available:null},{label:'Plan 1B',sqft:570,rent:3206,available:null}],
+    notes:'TOURED Jun 3 — great community and amenities but underwhelming floor plans. 2 split ACs confirmed. Modern appliances but NO dishwasher. In-unit W/D confirmed. Parking not confirmed free — verify. 21-acre campus, 3 pools, nice grounds. Reviews: thin walls/noise from upstairs (especially lower floors), pest reports (bed bugs, cockroaches, rats), management described as rude by some reviewers, good amenities maintained. Prometheus.' },
+
+  { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham#pricingAndFloorPlanBox', lat:37.3375762, lng:-122.0292813,
+    rent:3335, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    promo:'2 Weeks Free on Select Apartments',
+    plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:'2026-06-02'},{label:'Plan 1BR',sqft:750,rent:3397,available:'2026-06-02'},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
+    notes:'TOURED Jun 3 — decent interiors, okish community, rents are high for what you get. In-unit W/D, hardwood floors, saltwater pool. Carport/garage parking included. Prometheus.' },
+
+  { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino#pricingAndFloorPlanBox', lat:37.3330142, lng:-122.038348,
+    rent:3000, sqft:785, available:null, commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
+    status:'toured',
+    promo:'Up to 2 Weeks Free on Select Apartments',
+    plans:[{label:'Plan 1D - Classic w/ WD',sqft:785,rent:3118,available:null},{label:'Plan 1B - Renovated',sqft:643,rent:3139,available:'2026-06-03'},{label:'Plan 1C - Renovated w/ WD',sqft:695,rent:3241,available:null},{label:'Plan 1B - Renovated w/ WD',sqft:643,rent:3314,available:'2026-07-02'}],
+    notes:'TOURED Jun 1 — not impressed, not worth it. 3 tiers: Classic $2,700 (no W/D, no AC); Renovated $3,139 (window AC only, no W/D — fails both requirements); Renovated split AC + W/D $3,500 (over budget by $100). No plan within budget meets W/D + AC requirements. Reviews: thin walls, noise from upstairs neighbors, Hwy 280 traffic noise audible, fast driving in complex. Prometheus.' },
+
+  { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
+    url:'https://www.venue-apts.com/floorplans', lat:37.412722, lng:-121.9392808,
+    rent:3281, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    plans:[{label:'A1',sqft:784,rent:3357,available:'2026-08-04'},{label:'A2',sqft:824,rent:3397,available:null},{label:'A3',sqft:875,rent:3522,available:'2026-07-11'},{label:'A4',sqft:1022,rent:3300,available:null}],
+    notes:'LEED Gold. 1BR from $3,263 (was $3,251). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free. Refreshed 2026-06-01.' },
+
+  { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
+    url:'https://aireliving.com/floorplans/', lat:37.4051669, lng:-121.9314879,
+    rent:3416, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    promo:'2 Weeks Free on Select Apartments',
+    plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:'2026-06-02'},{label:'A27',sqft:979,rent:3752,available:null}],
+    notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01. OVER BUDGET as of 2026-06-02: lowest 1BR now $3,415.' },
+
+  { name:'Fountains at River Oaks', address:'373 River Oaks Circle, San Jose, CA 95134',
+    url:'https://www.essexapartmenthomes.com/apartments/san-jose/fountains-at-river-oaks/floor-plans-and-pricing', lat:37.4030882, lng:-121.9253707,
+    rent:3397, sqft:725, available:null, commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
+    plans:[{label:'Angel Falls',sqft:725,rent:2967,available:null}],
+    notes:'1BR from ~$2,614 (725 sqft) — notable drop from $2,967; verify current pricing on site. 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex. Refreshed 2026-06-01.' },
+
+  { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
+    url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/', lat:37.4003398, lng:-121.9245178,
+    rent:3262, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    status:'toured',
+    promo:'Up to 2 Weeks Free on select floor plans',
+    plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
+    notes:'TOURED Jun 2 — excellent apartments, amenities, and neighborhood. Too pricey. AVOID unit 107 (red flag). In-unit W/D confirmed. Central AC. LVP floors. 2-level gated garage. Shea Properties. Reviews: 530+ 5-star Google reviews, safe community, responsive maintenance. Watch out for car break-ins (reported), high move-out charges, and steep rent increases at renewal.' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -1473,9 +1497,8 @@ const SHORTLIST = [
 // ═══════════════════════════════════════════════════════
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
-    url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/', lat:37.3877241, lng:-121.993485,
-    rent:3700, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
-    promo:null,
+    url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/#community-unit-listings', lat:37.3877241, lng:-121.993485,
+    rent:3690, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
 
@@ -1488,7 +1511,7 @@ const CORPUS_LIST = [
 const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
 // Price fields — only applied when PRICE_VERSION is newer than stored version
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 6; // increment this (in code + cron PRs) to push new prices to all browsers
+const PRICE_VERSION = 7; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
@@ -1570,67 +1593,132 @@ function purgeRemoved() {
 // HISTORICAL PRICE SEED  (from git snapshots)
 // ═══════════════════════════════════
 const PRICE_HISTORY_SEED = [
-  {name:'Elan at River Oaks',          date:'2026-06-03', rent:3198},
-  {name:'Fountains at River Oaks',     date:'2026-06-03', rent:3399},
-  {name:'Aire Apartments',             date:'2026-06-03', rent:3415},
-  {name:'Venue Apartments',            date:'2026-06-03', rent:3269},
-  {name:'Villages at Cupertino',       date:'2026-06-03', rent:3118},
-  {name:'The Markham',                 date:'2026-06-03', rent:3522},
-  {name:'Spruce Apartments',           date:'2026-06-03', rent:3330},
-  {name:'Madrone Apartments',          date:'2026-06-03', rent:3660},
-  {name:'Timberleaf Apartments',       date:'2026-06-03', rent:3417},
-  {name:'Alderwood Apartments',        date:'2026-06-03', rent:3215},
-  {name:'Oak & Umber Apartments',      date:'2026-06-03', rent:3186},
-  {name:'Park Central Apartments',     date:'2026-06-03', rent:3253},
-  {name:'Cupertino City Center',       date:'2026-06-03', rent:2951},
-  {name:'The Montclaire',              date:'2026-06-03', rent:3247},
-  {name:'Sage at Cupertino',           date:'2026-06-03', rent:3087},
-  {name:'Magnolia Square',             date:'2026-06-03', rent:3067},
-  {name:'Orchard Glen Apartments',     date:'2026-06-03', rent:2665},
-  {name:'Mission Pointe by Windsor',   date:'2026-06-03', rent:3182},
-  {name:'Estancia at Santa Clara',     date:'2026-06-03', rent:3312},
-  {name:'Epic Apartments',             date:'2026-06-03', rent:3107},
-  {name:'Marina Cove',                 date:'2026-06-03', rent:3147},
-  {name:'River Terrace',               date:'2026-06-03', rent:3150},
-  {name:'Avalon Silicon Valley',       date:'2026-06-03', rent:3215},
-  // Jun 5
-  {name:'The Podium', date:'2026-06-05', rent:3185},
-  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3223},
-  {name:'The Verdant', date:'2026-06-05', rent:3104},
-  {name:'Sunnyvale Town Center', date:'2026-06-05', rent:2795},
-  {name:'Bella Vista Apartments', date:'2026-06-05', rent:3018},
-  {name:'Villas on the Boulevard', date:'2026-06-05', rent:3631},
-  {name:'Halford Gardens', date:'2026-06-05', rent:3095},
-  {name:'Riley Square', date:'2026-06-05', rent:3017},
-  {name:'Domicilio', date:'2026-06-05', rent:3298},
-  {name:'River Terrace', date:'2026-06-05', rent:3051},
-  {name:'Marina Cove', date:'2026-06-05', rent:3147},
-  {name:'Epic Apartments', date:'2026-06-05', rent:3209},
-  {name:'Avalon Silicon Valley', date:'2026-06-05', rent:3215},
-  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3317},
-  {name:'Mission Pointe by Windsor', date:'2026-06-05', rent:3189},
-  {name:'Orchard Glen Apartments', date:'2026-06-05', rent:3232},
-  {name:'Magnolia Square', date:'2026-06-05', rent:3257},
-  {name:'Sage at Cupertino', date:'2026-06-05', rent:3087},
-  {name:'The Montclaire', date:'2026-06-05', rent:3247},
-  {name:'Cupertino City Center', date:'2026-06-05', rent:3152},
-  {name:'Park Central Apartments', date:'2026-06-05', rent:3253},
-  {name:'Oak & Umber Apartments', date:'2026-06-05', rent:3368},
-  {name:'Alderwood Apartments', date:'2026-06-05', rent:3377},
-  {name:'Timberleaf Apartments', date:'2026-06-05', rent:3417},
-  {name:'Madrone Apartments', date:'2026-06-05', rent:3640},
-  {name:'Spruce Apartments', date:'2026-06-05', rent:3280},
-  {name:'The Markham', date:'2026-06-05', rent:3522},
-  {name:'Villages at Cupertino', date:'2026-06-05', rent:3000},
-  {name:'Venue Apartments', date:'2026-06-05', rent:3275},
-  {name:'Aire Apartments', date:'2026-06-05', rent:3416},
-  {name:'Fountains at River Oaks', date:'2026-06-05', rent:3399},
-  {name:'Elan at River Oaks', date:'2026-06-05', rent:3232},
   {name:'Parallel', date:'2026-06-05', rent:3116},
+  {name:'The Podium', date:'2026-06-04', rent:3185},
+  {name:'The Podium', date:'2026-06-05', rent:3185},
+  {name:'The Podium', date:'2026-06-08', rent:2950},
+  {name:'City Gate at Cupertino', date:'2026-06-04', rent:3253},
+  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3223},
+  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3218},
+  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3223},
+  {name:'City Gate at Cupertino', date:'2026-06-07', rent:3208},
+  {name:'The Verdant', date:'2026-06-04', rent:3113},
+  {name:'The Verdant', date:'2026-06-05', rent:3104},
+  {name:'The Verdant', date:'2026-06-07', rent:3117},
+  {name:'The Verdant', date:'2026-06-07', rent:3126},
+  {name:'Sunnyvale Town Center', date:'2026-06-04', rent:2495},
+  {name:'Sunnyvale Town Center', date:'2026-06-04', rent:2795},
+  {name:'Sunnyvale Town Center', date:'2026-06-05', rent:2795},
+  {name:'Bella Vista Apartments', date:'2026-06-04', rent:2733},
+  {name:'Bella Vista Apartments', date:'2026-06-04', rent:3018},
+  {name:'Bella Vista Apartments', date:'2026-06-05', rent:3018},
+  {name:'Villas on the Boulevard', date:'2026-06-04', rent:3208},
+  {name:'Villas on the Boulevard', date:'2026-06-05', rent:3631},
+  {name:'Halford Gardens', date:'2026-06-04', rent:2795},
+  {name:'Halford Gardens', date:'2026-06-04', rent:3095},
+  {name:'Halford Gardens', date:'2026-06-05', rent:3095},
+  {name:'Riley Square', date:'2026-06-04', rent:3017},
+  {name:'Riley Square', date:'2026-06-05', rent:3017},
+  {name:'Domicilio', date:'2026-06-04', rent:3298},
+  {name:'Domicilio', date:'2026-06-05', rent:3298},
+  {name:'Domicilio', date:'2026-06-07', rent:3372},
+  {name:'River Terrace', date:'2026-06-03', rent:3051},
+  {name:'River Terrace', date:'2026-06-05', rent:3051},
+  {name:'Marina Cove', date:'2026-06-03', rent:3147},
+  {name:'Marina Cove', date:'2026-06-05', rent:3147},
+  {name:'Marina Cove', date:'2026-06-07', rent:3087},
+  {name:'Epic Apartments', date:'2026-06-02', rent:3209},
+  {name:'Epic Apartments', date:'2026-06-03', rent:3107},
+  {name:'Epic Apartments', date:'2026-06-05', rent:3209},
+  {name:'Epic Apartments', date:'2026-06-05', rent:3147},
+  {name:'Epic Apartments', date:'2026-06-05', rent:3209},
+  {name:'Epic Apartments', date:'2026-06-05', rent:3147},
+  {name:'Epic Apartments', date:'2026-06-07', rent:3137},
+  {name:'Avalon Silicon Valley', date:'2026-06-01', rent:3215},
+  {name:'Avalon Silicon Valley', date:'2026-06-03', rent:3215},
+  {name:'Avalon Silicon Valley', date:'2026-06-05', rent:3215},
+  {name:'Avalon Silicon Valley', date:'2026-06-05', rent:3700},
+  {name:'Avalon Silicon Valley', date:'2026-06-07', rent:3690},
+  {name:'Estancia at Santa Clara', date:'2026-06-01', rent:3312},
+  {name:'Estancia at Santa Clara', date:'2026-06-03', rent:3312},
+  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3317},
+  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3312},
+  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3317},
+  {name:'Estancia at Santa Clara', date:'2026-06-07', rent:3307},
+  {name:'Mission Pointe by Windsor', date:'2026-06-01', rent:3189},
+  {name:'Mission Pointe by Windsor', date:'2026-06-03', rent:3182},
+  {name:'Mission Pointe by Windsor', date:'2026-06-05', rent:3189},
+  {name:'Mission Pointe by Windsor', date:'2026-06-05', rent:3373},
+  {name:'Orchard Glen Apartments', date:'2026-06-01', rent:3232},
+  {name:'Orchard Glen Apartments', date:'2026-06-03', rent:2665},
+  {name:'Orchard Glen Apartments', date:'2026-06-05', rent:3232},
+  {name:'Magnolia Square', date:'2026-06-01', rent:3257},
+  {name:'Magnolia Square', date:'2026-06-03', rent:3067},
+  {name:'Magnolia Square', date:'2026-06-05', rent:3257},
+  {name:'Sage at Cupertino', date:'2026-06-01', rent:3087},
+  {name:'Sage at Cupertino', date:'2026-06-03', rent:3087},
+  {name:'Sage at Cupertino', date:'2026-06-05', rent:3087},
+  {name:'Sage at Cupertino', date:'2026-06-07', rent:3237},
+  {name:'The Montclaire', date:'2026-06-01', rent:3247},
+  {name:'The Montclaire', date:'2026-06-03', rent:3247},
+  {name:'The Montclaire', date:'2026-06-05', rent:3247},
+  {name:'The Montclaire', date:'2026-06-05', rent:3239},
+  {name:'The Montclaire', date:'2026-06-05', rent:3247},
+  {name:'The Montclaire', date:'2026-06-07', rent:3239},
+  {name:'Cupertino City Center', date:'2026-06-01', rent:3152},
+  {name:'Cupertino City Center', date:'2026-06-03', rent:2951},
+  {name:'Cupertino City Center', date:'2026-06-05', rent:3152},
+  {name:'Park Central Apartments', date:'2026-06-01', rent:3253},
+  {name:'Park Central Apartments', date:'2026-06-03', rent:3253},
+  {name:'Park Central Apartments', date:'2026-06-05', rent:3253},
+  {name:'Park Central Apartments', date:'2026-06-07', rent:3289},
+  {name:'Park Central Apartments', date:'2026-06-08', rent:3284},
+  {name:'Oak & Umber Apartments', date:'2026-06-01', rent:3227},
+  {name:'Oak & Umber Apartments', date:'2026-06-03', rent:3186},
+  {name:'Oak & Umber Apartments', date:'2026-06-05', rent:3368},
+  {name:'Oak & Umber Apartments', date:'2026-06-07', rent:3353},
+  {name:'Alderwood Apartments', date:'2026-06-01', rent:3377},
+  {name:'Alderwood Apartments', date:'2026-06-03', rent:3215},
+  {name:'Alderwood Apartments', date:'2026-06-05', rent:3377},
+  {name:'Alderwood Apartments', date:'2026-06-07', rent:3368},
+  {name:'Timberleaf Apartments', date:'2026-06-01', rent:3417},
+  {name:'Timberleaf Apartments', date:'2026-06-03', rent:3417},
+  {name:'Timberleaf Apartments', date:'2026-06-05', rent:3417},
+  {name:'Timberleaf Apartments', date:'2026-06-07', rent:3418},
+  {name:'Madrone Apartments', date:'2026-06-01', rent:3660},
+  {name:'Madrone Apartments', date:'2026-06-03', rent:3660},
+  {name:'Madrone Apartments', date:'2026-06-05', rent:3640},
+  {name:'Madrone Apartments', date:'2026-06-07', rent:3660},
+  {name:'Spruce Apartments', date:'2026-06-01', rent:3280},
+  {name:'Spruce Apartments', date:'2026-06-03', rent:3330},
+  {name:'Spruce Apartments', date:'2026-06-05', rent:3280},
+  {name:'The Markham', date:'2026-06-01', rent:3522},
+  {name:'The Markham', date:'2026-06-03', rent:3522},
+  {name:'The Markham', date:'2026-06-05', rent:3522},
+  {name:'The Markham', date:'2026-06-07', rent:3335},
+  {name:'Villages at Cupertino', date:'2026-06-01', rent:3000},
+  {name:'Villages at Cupertino', date:'2026-06-03', rent:3118},
+  {name:'Villages at Cupertino', date:'2026-06-05', rent:3000},
+  {name:'Venue Apartments', date:'2026-06-01', rent:3269},
+  {name:'Venue Apartments', date:'2026-06-03', rent:3269},
+  {name:'Venue Apartments', date:'2026-06-05', rent:3275},
+  {name:'Venue Apartments', date:'2026-06-07', rent:3278},
+  {name:'Venue Apartments', date:'2026-06-08', rent:3281},
+  {name:'Aire Apartments', date:'2026-06-01', rent:3415},
+  {name:'Aire Apartments', date:'2026-06-03', rent:3415},
+  {name:'Aire Apartments', date:'2026-06-05', rent:3416},
+  {name:'Fountains at River Oaks', date:'2026-06-01', rent:3399},
+  {name:'Fountains at River Oaks', date:'2026-06-03', rent:3399},
+  {name:'Fountains at River Oaks', date:'2026-06-05', rent:3399},
+  {name:'Fountains at River Oaks', date:'2026-06-07', rent:3397},
+  {name:'Elan at River Oaks', date:'2026-06-01', rent:3232},
+  {name:'Elan at River Oaks', date:'2026-06-03', rent:3198},
+  {name:'Elan at River Oaks', date:'2026-06-05', rent:3232},
+  {name:'Elan at River Oaks', date:'2026-06-05', rent:3262},
 ];
 
 function seedHistoricalPrices() {
-  if (localStorage.getItem('kalyan_history_seeded_v2')) return;
+  if (localStorage.getItem('kalyan_history_seeded_v3')) return;
   PRICE_HISTORY_SEED.forEach(({name, date, rent}) => {
     const a = apartments.find(x => x.name.toLowerCase() === name.toLowerCase());
     if (!a) return;
@@ -1640,7 +1728,7 @@ function seedHistoricalPrices() {
       a.price_history.sort((x, y) => x.date.localeCompare(y.date));
     }
   });
-  localStorage.setItem('kalyan_history_seeded_v2', '1');
+  localStorage.setItem('kalyan_history_seeded_v3', '1');
   saveData();
 }
 
