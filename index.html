@@ -230,7 +230,7 @@
         <div class="space-y-2" id="summary-status-dist"></div>
       </div>
       <div class="bg-white border border-gray-200 rounded-lg p-4">
-        <p class="text-sm font-semibold text-gray-900 mb-3">Notable Apartments</p>
+        <p class="text-sm font-semibold text-gray-900 mb-3">🎯 Top Candidates</p>
         <div class="space-y-2 text-xs" id="summary-notable"></div>
       </div>
     </div>
@@ -1168,16 +1168,24 @@ function renderSummary() {
     `<p class="flex justify-between"><span class="capitalize">${s}:</span><span class="font-semibold">${c}</span></p>`
   ).join('');
 
-  // Notable apartments
+  // Top candidates — only picks that actually fit the hunt criteria
   const notableParts = [];
-  const cheapest = apts.filter(a => a.rent).sort((a,b) => a.rent - b.rent)[0];
-  if (cheapest) notableParts.push(`<p>💰 Cheapest: <strong>${cheapest.name}</strong> — $${cheapest.rent}</p>`);
-  const expensive = apts.filter(a => a.rent).sort((a,b) => b.rent - a.rent)[0];
-  if (expensive && expensive.name !== cheapest?.name) notableParts.push(`<p>🏷️ Most Expensive: <strong>${expensive.name}</strong> — $${expensive.rent}</p>`);
-  const shortCommute = apts.filter(a => a.commute).sort((a,b) => a.commute - b.commute)[0];
-  if (shortCommute) notableParts.push(`<p>⚡ Shortest Commute: <strong>${shortCommute.name}</strong> — ${shortCommute.commute} min</p>`);
-  const recentlyToured = apts.filter(a => a.status === 'toured').sort((a,b) => new Date(b.added) - new Date(a.added))[0];
-  if (recentlyToured) notableParts.push(`<p>✅ Recently Toured: <strong>${recentlyToured.name}</strong></p>`);
+  const fmtRent = r => r ? `$${r.toLocaleString()}` : 'call for price';
+  const qual = apts.map(a => ({a, s: score(a)})).filter(x => x.s.qualifies);
+  // Best overall match (highest score across everything)
+  const best = apts.map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (x.a.rent||9e9) - (y.a.rent||9e9))[0];
+  if (best) notableParts.push(`<p>🎯 Best match: <strong>${best.a.name}</strong> — ${fmtRent(best.a.rent)}${best.a.commute ? ` · ${best.a.commute} min` : ''} · ${best.s.pts}/100${best.s.qualifies ? '' : ` <span class="text-amber-600">(misses ${best.s.missingReq.length})</span>`}</p>`);
+  // Cheapest that meets ALL must-haves
+  const cheapQual = [...qual].sort((x,y) => (x.a.rent||9e9) - (y.a.rent||9e9))[0];
+  if (cheapQual) notableParts.push(`<p>💰 Cheapest that meets all musts: <strong>${cheapQual.a.name}</strong> — ${fmtRent(cheapQual.a.rent)}</p>`);
+  // Fastest commute that meets ALL must-haves
+  const fastQual = qual.filter(x => x.a.commute).sort((x,y) => x.a.commute - y.a.commute)[0];
+  if (fastQual && fastQual.a.name !== cheapQual?.a.name) notableParts.push(`<p>⚡ Fastest commute that qualifies: <strong>${fastQual.a.name}</strong> — ${fastQual.a.commute} min · ${fmtRent(fastQual.a.rent)}</p>`);
+  // Best apartment you've actually toured
+  const bestToured = apts.filter(a => a.status === 'toured').map(a => ({a, s: score(a)}))
+    .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (x.a.rent||9e9) - (y.a.rent||9e9))[0];
+  if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(bestToured.a.rent)}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
+  if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC + free parking ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
 
   // Market insights — biggest movers + best value (data-driven, refreshes every render)
   const insights = [];
@@ -1189,17 +1197,27 @@ function renderSummary() {
     if (first && last && first !== last) movers.push({ name: a.name, delta: last - first, from: first, to: last });
   });
   const drops = movers.filter(m => m.delta < 0).sort((a,b) => a.delta - b.delta);
-  const rises = movers.filter(m => m.delta > 0).sort((a,b) => b.delta - a.delta);
-  if (drops[0]) insights.push(`<p>📉 Biggest drop: <strong>${drops[0].name}</strong> down $${Math.abs(drops[0].delta).toLocaleString()} ($${drops[0].from.toLocaleString()} → $${drops[0].to.toLocaleString()})</p>`);
-  if (rises[0]) insights.push(`<p>📈 Biggest increase: <strong>${rises[0].name}</strong> up $${rises[0].delta.toLocaleString()} ($${rises[0].from.toLocaleString()} → $${rises[0].to.toLocaleString()})</p>`);
-  // Best value: qualifying apt with lowest rent
-  const qualifying = apts.filter(a => score(a).qualifies && a.rent).sort((a,b) => a.rent - b.rent);
-  if (qualifying[0]) insights.push(`<p>⭐ Best value (meets all musts): <strong>${qualifying[0].name}</strong> at $${qualifying[0].rent.toLocaleString()}${qualifying[0].commute ? `, ${qualifying[0].commute} min` : ''}</p>`);
-  else insights.push(`<p>⚠️ No apartment currently meets all must-haves within $${MAX_RENT.toLocaleString()} (W/D + AC + free parking).</p>`);
-  // Active promos count
-  const promoCount = apts.filter(a => a.promo).length;
-  if (promoCount > 0) insights.push(`<p>🏷️ ${promoCount} listing${promoCount>1?'s have':' has'} an active promotion right now.</p>`);
-  // Toured progress
+  if (drops[0]) insights.push(`<p>📉 Biggest price drop: <strong>${drops[0].name}</strong> down $${Math.abs(drops[0].delta).toLocaleString()} ($${drops[0].from.toLocaleString()} → $${drops[0].to.toLocaleString()}) — softening, worth a call.</p>`);
+
+  // Near-misses — apartments that fail on exactly ONE confirmed thing (negotiable / compromise candidates)
+  const commuteOk = a => !a.commute || a.commute <= MAX_COMMUTE;
+  const names = arr => arr.map(a => a.name).join(', ');
+  const paidParking = apts.filter(a => a.has_wd===true && a.has_ac===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_parking===false);
+  if (paidParking.length) insights.push(`<p>🅿️ Meets everything but parking is paid (${paidParking.length}): <strong>${names(paidParking)}</strong> — factor parking cost, otherwise solid.</p>`);
+  const noAc = apts.filter(a => a.has_wd===true && a.has_parking===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_ac===false);
+  if (noAc.length) insights.push(`<p>❄️ Meets everything but no AC (${noAc.length}): <strong>${names(noAc)}</strong> — portable AC (~$40/mo) could close the gap.</p>`);
+  const overBudgetClose = apts.filter(a => a.has_wd===true && a.has_ac===true && a.has_parking===true && commuteOk(a) && a.rent && a.rent>MAX_RENT && a.rent<=MAX_RENT+150);
+  if (overBudgetClose.length) insights.push(`<p>💵 Qualifies but ≤$150 over budget (${overBudgetClose.length}): <strong>${overBudgetClose.map(a=>`${a.name} (+$${(a.rent-MAX_RENT).toLocaleString()})`).join(', ')}</strong> — a promo or negotiation could bring it in range.</p>`);
+
+  // Promos that effectively cut rent (count only — actionable ones already named in near-miss lines)
+  const promos = apts.filter(a => a.promo && a.rent && a.rent<=MAX_RENT+200);
+  if (promos.length) insights.push(`<p>🏷️ ${promos.length} near-budget listing${promos.length>1?'s have':' has'} an active promo (free weeks effectively cut rent — check the listing cards).</p>`);
+
+  // Verification backlog — unverified must-haves blocking a yes/no
+  const needVerify = apts.filter(a => a.status!=='toured' && a.rent && a.rent<=MAX_RENT && commuteOk(a) && (a.has_wd===null || a.has_ac===null || a.has_parking===null));
+  if (needVerify.length) insights.push(`<p>📞 In-budget but amenities unconfirmed (${needVerify.length}): <strong>${names(needVerify)}</strong> — call to verify W/D, AC, parking.</p>`);
+
+  // Tour progress
   const touredCount = apts.filter(a => a.status === 'toured').length;
   if (total > 0) insights.push(`<p>🚶 Toured ${touredCount} of ${total} (${Math.round(touredCount/total*100)}%) — ${total - touredCount} still to visit.</p>`);
 
