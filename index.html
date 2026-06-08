@@ -1546,13 +1546,13 @@ const SHORTLIST = [
 
   { name:'Apricot Pit', address:'400 E Remington Dr, Sunnyvale, CA 94087',
     url:'https://www.deanzaproperties.com/south-bay-area/apricot-pit-apartments/#floorplans', lat:37.3582624, lng:-122.0290559,
-    rent:2625, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (De Anza Properties) — 1BR from $2,625. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
+    rent:2625, sqft:550, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (De Anza Properties) — 1BR junior ~550 sqft from $2,625. PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED laundry room (NOT in-unit W/D), assigned covered parking included, hardwood floors, NO PETS. AC not listed — verify on tour/call (408) 738-4862. Sunnyvale.' },
 
   { name:'Cezanne', address:'455 Brahms Way, Sunnyvale, CA 94087',
     url:'https://www.deanzaproperties.com/south-bay-area/cezanne-apartments/#floorplans', lat:37.3631011, lng:-122.0290373,
-    rent:2400, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (De Anza Properties) — 1BR from $2,400. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
+    rent:2400, sqft:650, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (De Anza Properties) — 1BR ~650 sqft from $2,400 (–$2,450). PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED on-site laundry (NOT in-unit W/D), 1 assigned covered parking included, carpet/vinyl flooring (not hardwood), NO PETS. AC not listed — verify on tour. Sunnyvale.' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -1574,7 +1574,7 @@ const CORPUS_LIST = [
 const IMPORT_FIELDS = ['address','url','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
 // Price fields — only applied when PRICE_VERSION is newer than stored version
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo'];
-const PRICE_VERSION = 7; // increment this (in code + cron PRs) to push new prices to all browsers
+const PRICE_VERSION = 8; // increment this (in code + cron PRs) to push new prices to all browsers
 
 function importList(source, listType) {
   let changed = false;
