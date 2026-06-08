@@ -1450,7 +1450,7 @@ const SHORTLIST = [
     notes:'TOURED Jun 2 — good apartments but out of budget when all costs factored in. In-unit W/D confirmed. Split AC in living room confirmed. NOISE RISK: units near Lawrence Expressway have traffic noise — request a unit away from it. Assigned + open parking available. Heated saltwater pool. Prometheus.' },
 
   { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
-    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square', lat:37.381926, lng:-122.0449243,
+    url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square/floor-plans-and-pricing', lat:37.381926, lng:-122.0449243,
     rent:3257, sqft:735, available:null, commute:11, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     plans:[{label:'1BR/1BA',sqft:735,rent:3067,available:null}],
@@ -1626,7 +1626,7 @@ const IMPORT_FIELDS = ['address','commute','has_wd','has_ac','has_parking','has_
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 9; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 10; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
