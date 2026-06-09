@@ -990,12 +990,12 @@ function setView(v) {
     lp.className = 'w-full overflow-y-auto p-4'; lp.classList.remove('hidden');
   } else if (v === 'map') {
     mp.className = 'flex-1 border-l border-gray-200'; mp.classList.remove('hidden');
-    lg.classList.remove('hidden');
+    lg.classList.remove('hidden'); showLegendThenCollapse();
     setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
   } else if (v === 'split') {
     lp.className = 'w-1/2 overflow-y-auto p-4'; lp.classList.remove('hidden');
     mp.className = 'w-1/2 border-l border-gray-200'; mp.classList.remove('hidden');
-    lg.classList.remove('hidden');
+    lg.classList.remove('hidden'); showLegendThenCollapse();
     setTimeout(() => { initMap(); mapInst?.invalidateSize(); }, 80);
   } else if (v === 'trends') {
     tp.style.display = 'flex'; tp.classList.remove('hidden');
@@ -1033,11 +1033,22 @@ function exportJSON() {
 // ═══════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════
-function toggleLegend() {
+let legendTimer = null;
+function setLegendCollapsed(collapsed) {
   const body = get('legend-body'), chevron = get('legend-chevron');
-  const collapsed = body.style.display === 'none';
-  body.style.display = collapsed ? '' : 'none';
-  chevron.innerHTML = collapsed ? '&#8964;' : '&#8963;';
+  if (!body) return;
+  body.style.display = collapsed ? 'none' : '';
+  chevron.innerHTML = collapsed ? '&#8963;' : '&#8964;';
+}
+function toggleLegend() {
+  clearTimeout(legendTimer);  // a manual click cancels the auto-collapse
+  setLegendCollapsed(get('legend-body').style.display !== 'none');
+}
+// Called when the legend becomes visible (map/split view): show it, then auto-minimize after 2s.
+function showLegendThenCollapse() {
+  setLegendCollapsed(false);
+  clearTimeout(legendTimer);
+  legendTimer = setTimeout(() => setLegendCollapsed(true), 2000);
 }
 
 // ═══════════════════════════════════
