@@ -604,6 +604,22 @@ function parkingHasNote(apt) {
     || /parking[^.]{0,30}(not included|required)\b/.test(n);
 }
 
+// Parking cost pulled from the notes, e.g. " $95/mo" or " $10–40/mo". Empty if no $ figure.
+function parkingCostLabel(apt) {
+  if (!parkingHasNote(apt)) return '';
+  const n = apt.notes || '';
+  const amts = [];
+  const re = /(off\s+)?\+?\$(\d{1,4})\s*\/\s*(?:mo|month)(\s*off)?/gi;
+  let m;
+  while ((m = re.exec(n)) !== null) {
+    if (m[1] || m[3]) continue;          // skip promo "$X/mo off" amounts
+    const v = parseInt(m[2]); if (v) amts.push(v);
+  }
+  if (!amts.length) return '';
+  const lo = Math.min(...amts), hi = Math.max(...amts);
+  return lo === hi ? ` $${lo}/mo` : ` $${lo}–${hi}/mo`;
+}
+
 function card(apt) {
   const s = score(apt);
   const isCorpus = apt.list === 'corpus';
@@ -705,7 +721,7 @@ function card(apt) {
       ${amenityBadge(apt.has_wd,      'W/D',     true)}
       ${acBadge(apt)}
       ${amenityBadge(apt.has_hardwood,'Hardwood',false)}
-      ${parkingHasNote(apt) ? `<span class="amenity-badge bg-orange-50 border-orange-200 text-orange-700">&#128176; Paid parking</span>` : ''}
+      ${parkingHasNote(apt) ? `<span class="amenity-badge bg-orange-50 border-orange-200 text-orange-700">&#128176; Paid parking${parkingCostLabel(apt)}</span>` : ''}
     </div>
 
     <!-- Commute -->
@@ -1257,7 +1273,7 @@ function renderSummary() {
   if (overBudgetClose.length) insights.push(`<p>💵 Qualifies but ≤$150 over budget (${overBudgetClose.length}): <strong>${overBudgetClose.map(a=>`${a.name} (+$${(a.rent-MAX_RENT).toLocaleString()})`).join(', ')}</strong> — a promo or negotiation could bring it in range.</p>`);
   // Paid-parking caveats (informational — parking isn't a hard requirement, just a cost note)
   const paidParking = apts.filter(a => parkingHasNote(a));
-  if (paidParking.length) insights.push(`<p>💲 Paid parking to factor in (${paidParking.length}): <strong>${names(paidParking)}</strong> — assigned/guest/extra parking has a fee; see notes.</p>`);
+  if (paidParking.length) insights.push(`<p>💲 Paid parking to factor in (${paidParking.length}): <strong>${paidParking.map(a => { const c = parkingCostLabel(a).trim(); return c ? `${a.name} (${c})` : a.name; }).join(', ')}</strong> — see notes for details.</p>`);
 
   // Promos that effectively cut rent (count only — actionable ones already named in near-miss lines)
   const promos = apts.filter(a => a.promo && a.rent && a.rent<=MAX_RENT+200);
