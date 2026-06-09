@@ -134,7 +134,6 @@
     <span class="text-xs text-gray-400 mr-0.5">Must have:</span>
     <button data-amen="wd"       onclick="toggleAmenity('wd')"       class="amen-chip"></button>
     <button data-amen="ac"       onclick="toggleAmenity('ac')"       class="amen-chip"></button>
-    <button data-amen="parking"  onclick="toggleAmenity('parking')"  class="amen-chip"></button>
     <button data-amen="hardwood" onclick="toggleAmenity('hardwood')" class="amen-chip"></button>
   </div>
   <select id="sort-by" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -320,7 +319,7 @@
           </label>
           <label id="lbl-parking" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
             <input id="f-parking" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-parking','lbl-parking')">
-            <span class="text-sm"><span class="block font-medium text-gray-800">Free Parking</span><span class="text-xs text-red-500">Required</span></span>
+            <span class="text-sm"><span class="block font-medium text-gray-800">Parking incl.</span><span class="text-xs text-gray-400">Optional</span></span>
           </label>
           <label id="lbl-hardwood" class="flex items-start gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
             <input id="f-hardwood" type="checkbox" class="mt-0.5 accent-green-500 w-4 h-4 flex-shrink-0" onchange="styleCheckbox('f-hardwood','lbl-hardwood')">
@@ -430,21 +429,21 @@ function saveData() {
 // SCORING
 // ═══════════════════════════════════
 function score(apt) {
+  // Parking is no longer a hard requirement — most communities include at least one
+  // assigned space. Paid-parking caveats surface as a tag from the notes instead.
   const missingReq = [], missingPref = [];
   if (!apt.has_wd)                              missingReq.push('In-unit W/D');
   if (!apt.has_ac)                              missingReq.push('AC');
-  if (!apt.has_parking)                         missingReq.push('Free Parking');
   if (apt.rent && apt.rent > MAX_RENT)          missingReq.push('Over budget ($' + apt.rent.toLocaleString() + ')');
   if (apt.commute && apt.commute > MAX_COMMUTE) missingReq.push(apt.commute + ' min commute');
   if (!apt.has_hardwood)                        missingPref.push('Hardwood');
   const qualifies = missingReq.length === 0;
   let pts = 0;
-  if (apt.has_wd)      pts += 25;
-  if (apt.has_ac)      pts += 25;
-  if (apt.has_parking) pts += 20;
-  if (apt.rent && apt.rent <= MAX_RENT) pts += 10;
-  if (apt.commute && apt.commute <= MAX_COMMUTE) pts += 10;
-  else if (!apt.commute) pts += 5;
+  if (apt.has_wd)      pts += 30;
+  if (apt.has_ac)      pts += 30;
+  if (apt.rent && apt.rent <= MAX_RENT) pts += 15;
+  if (apt.commute && apt.commute <= MAX_COMMUTE) pts += 15;
+  else if (!apt.commute) pts += 7;
   if (apt.has_hardwood) pts += 10;
   if (apt.rent && apt.rent <= MAX_RENT) pts += Math.min(5, Math.floor((MAX_RENT - apt.rent) / 100));
   return { qualifies, missingReq, missingPref, pts: Math.min(100, pts) };
@@ -513,19 +512,18 @@ function applyFilters() {
     // Must-have amenity chips (combinable, AND). Strict: confirmed true only.
     if (amenityFilters.wd       && a.has_wd !== true)       return false;
     if (amenityFilters.ac       && a.has_ac !== true)       return false;
-    if (amenityFilters.parking  && a.has_parking !== true)  return false;
     if (amenityFilters.hardwood && a.has_hardwood !== true) return false;
     const s = score(a);
     const commuteOk = !a.commute || a.commute <= MAX_COMMUTE;
     if (cr === 'qualifies'           && !s.qualifies) return false;
-    if (cr === 'missing_dealbreaker' && a.has_wd && a.has_ac && a.has_parking) return false;
+    if (cr === 'missing_dealbreaker' && a.has_wd && a.has_ac) return false;
     if (cr === 'under_budget'        && (!a.rent || a.rent > MAX_RENT)) return false;
     if (cr === 'over_budget'         && (!a.rent || a.rent <= MAX_RENT)) return false;
     if (cr === 'commute_ok'          && !commuteOk) return false;
     if (cr === 'has_promo'           && !a.promo) return false;
     if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
     if (cr === 'near_miss'           && !isNearMiss(a)) return false;
-    if (cr === 'needs_verify'        && !(a.status !== 'toured' && a.rent && a.rent <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null || a.has_parking === null))) return false;
+    if (cr === 'needs_verify'        && !(a.status !== 'toured' && a.rent && a.rent <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null))) return false;
     return true;
   });
 
@@ -581,13 +579,38 @@ function amenityBadge(val, label, req) {
   return             `<span class="amenity-badge bg-gray-50 border-gray-200 text-gray-400">&#10007; ${label}</span>`;
 }
 
+// AC badge that labels the TYPE (any AC type counts as present/green).
+function acType(apt) {
+  const n = (apt.notes || '').toLowerCase();
+  if (/central ac|central air/.test(n)) return 'Central AC';
+  if (/split ac/.test(n))               return 'Split AC';
+  if (/window ac/.test(n))              return 'Window AC';
+  return 'AC';
+}
+function acBadge(apt) {
+  if (apt.has_ac === true)  return `<span class="amenity-badge bg-green-50 border-green-200 text-green-700">&#10003; ${acType(apt)}</span>`;
+  if (apt.has_ac === null)  return `<span class="amenity-badge bg-yellow-50 border-yellow-200 text-yellow-700">? AC</span>`;
+  return                    `<span class="amenity-badge bg-red-50 border-red-200 text-red-600">&#10007; No AC</span>`;
+}
+
+// True when the user's notes flag a paid-parking caveat (assigned/guest/extra parking costs).
+function parkingHasNote(apt) {
+  const n = (apt.notes || '').toLowerCase();
+  return /paid parking/.test(n)
+    || /parking[^.]{0,45}\$\d/.test(n)
+    || /\$\d[\d,]*\s*\/\s*mo[^.]{0,30}park/.test(n)
+    || /(guest|extra) (parking|pass|day pass)[^.]{0,30}\$/.test(n)
+    || /reserved garage[^.]{0,20}\$/.test(n)
+    || /parking[^.]{0,30}(not included|required)\b/.test(n);
+}
+
 function card(apt) {
   const s = score(apt);
   const isCorpus = apt.list === 'corpus';
 
   const border = isCorpus ? 'corpus-card' :
                  s.qualifies ? 'qualifies' :
-                 (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? 'missing-req' : 'missing-pref';
+                 (!apt.has_wd || !apt.has_ac) ? 'missing-req' : 'missing-pref';
 
   const rentClr = !apt.rent ? 'text-gray-400' :
                   apt.rent <= MAX_RENT ? 'text-green-700' : 'text-red-600';
@@ -680,9 +703,9 @@ function card(apt) {
     <!-- Amenities -->
     <div class="flex flex-wrap gap-1.5 mb-3">
       ${amenityBadge(apt.has_wd,      'W/D',     true)}
-      ${amenityBadge(apt.has_ac,      'AC',      true)}
-      ${amenityBadge(apt.has_parking, 'Parking', true)}
+      ${acBadge(apt)}
       ${amenityBadge(apt.has_hardwood,'Hardwood',false)}
+      ${parkingHasNote(apt) ? `<span class="amenity-badge bg-orange-50 border-orange-200 text-orange-700">&#128176; Paid parking</span>` : ''}
     </div>
 
     <!-- Commute -->
@@ -746,7 +769,7 @@ function markerColor(apt) {
   const s = score(apt);
   return apt.list === 'corpus' ? '#8b5cf6' :
          s.qualifies ? '#22c55e' :
-         (!apt.has_wd || !apt.has_ac || !apt.has_parking) ? '#ef4444' : '#f59e0b';
+         (!apt.has_wd || !apt.has_ac) ? '#ef4444' : '#f59e0b';
 }
 
 function makeMarkerIcon(apt, selected) {
@@ -1030,7 +1053,14 @@ function renderTrends() {
       label,
       _fullName: apt.name,
       _color: col,
-      data: allDates.map(d => { const p = apt.price_history.find(h => h.date === d); return p ? p.rent : null; }),
+      // Forward-fill: carry the last known price across dates with no update, so every
+      // listing has a continuous line through to the latest date (no broken/sparse lines).
+      data: (() => {
+        const byDate = {};
+        apt.price_history.forEach(h => { byDate[h.date] = h.rent; }); // last value wins per date
+        let last = null;
+        return allDates.map(d => { if (byDate[d] != null) last = byDate[d]; return last; });
+      })(),
       borderColor: col,
       backgroundColor: col + '20',
       borderWidth: 2,
@@ -1204,7 +1234,7 @@ function renderSummary() {
   const bestToured = apts.filter(a => a.status === 'toured').map(a => ({a, s: score(a)}))
     .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (x.a.rent||9e9) - (y.a.rent||9e9))[0];
   if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(bestToured.a.rent)}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
-  if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC + free parking ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
+  if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
 
   // Market insights — biggest movers + best value (data-driven, refreshes every render)
   const insights = [];
@@ -1221,20 +1251,21 @@ function renderSummary() {
   // Near-misses — apartments that fail on exactly ONE confirmed thing (negotiable / compromise candidates)
   const commuteOk = a => !a.commute || a.commute <= MAX_COMMUTE;
   const names = arr => arr.map(a => a.name).join(', ');
-  const paidParking = apts.filter(a => a.has_wd===true && a.has_ac===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_parking===false);
-  if (paidParking.length) insights.push(`<p>🅿️ Meets everything but parking is paid (${paidParking.length}): <strong>${names(paidParking)}</strong> — factor parking cost, otherwise solid.</p>`);
-  const noAc = apts.filter(a => a.has_wd===true && a.has_parking===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_ac===false);
+  const noAc = apts.filter(a => a.has_wd===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_ac===false);
   if (noAc.length) insights.push(`<p>❄️ Meets everything but no AC (${noAc.length}): <strong>${names(noAc)}</strong> — portable AC (~$40/mo) could close the gap.</p>`);
-  const overBudgetClose = apts.filter(a => a.has_wd===true && a.has_ac===true && a.has_parking===true && commuteOk(a) && a.rent && a.rent>MAX_RENT && a.rent<=MAX_RENT+150);
+  const overBudgetClose = apts.filter(a => a.has_wd===true && a.has_ac===true && commuteOk(a) && a.rent && a.rent>MAX_RENT && a.rent<=MAX_RENT+150);
   if (overBudgetClose.length) insights.push(`<p>💵 Qualifies but ≤$150 over budget (${overBudgetClose.length}): <strong>${overBudgetClose.map(a=>`${a.name} (+$${(a.rent-MAX_RENT).toLocaleString()})`).join(', ')}</strong> — a promo or negotiation could bring it in range.</p>`);
+  // Paid-parking caveats (informational — parking isn't a hard requirement, just a cost note)
+  const paidParking = apts.filter(a => parkingHasNote(a));
+  if (paidParking.length) insights.push(`<p>💲 Paid parking to factor in (${paidParking.length}): <strong>${names(paidParking)}</strong> — assigned/guest/extra parking has a fee; see notes.</p>`);
 
   // Promos that effectively cut rent (count only — actionable ones already named in near-miss lines)
   const promos = apts.filter(a => a.promo && a.rent && a.rent<=MAX_RENT+200);
   if (promos.length) insights.push(`<p>🏷️ ${promos.length} near-budget listing${promos.length>1?'s have':' has'} an active promo (free weeks effectively cut rent — check the listing cards).</p>`);
 
   // Verification backlog — unverified must-haves blocking a yes/no
-  const needVerify = apts.filter(a => a.status!=='toured' && a.rent && a.rent<=MAX_RENT && commuteOk(a) && (a.has_wd===null || a.has_ac===null || a.has_parking===null));
-  if (needVerify.length) insights.push(`<p>📞 In-budget but amenities unconfirmed (${needVerify.length}): <strong>${names(needVerify)}</strong> — call to verify W/D, AC, parking.</p>`);
+  const needVerify = apts.filter(a => a.status!=='toured' && a.rent && a.rent<=MAX_RENT && commuteOk(a) && (a.has_wd===null || a.has_ac===null));
+  if (needVerify.length) insights.push(`<p>📞 In-budget but amenities unconfirmed (${needVerify.length}): <strong>${names(needVerify)}</strong> — call to verify W/D and AC.</p>`);
 
   // Tour progress
   const touredCount = apts.filter(a => a.status === 'toured').length;
@@ -1280,8 +1311,8 @@ document.addEventListener('click', e => {
 });
 
 // ── Must-have amenity quick filters (combinable) ──
-const amenityFilters = { wd:false, ac:false, parking:false, hardwood:false };
-const AMEN_LABEL = { wd:'W/D', ac:'AC', parking:'Parking', hardwood:'Hardwood' };
+const amenityFilters = { wd:false, ac:false, hardwood:false };
+const AMEN_LABEL = { wd:'W/D', ac:'AC', hardwood:'Hardwood' };
 function toggleAmenity(k) { amenityFilters[k] = !amenityFilters[k]; updateAmenityChips(); applyFilters(); }
 function updateAmenityChips() {
   document.querySelectorAll('.amen-chip').forEach(b => {
@@ -1296,14 +1327,12 @@ function isNearMiss(a) {
   const fails = [];
   if (a.has_wd === false)                          fails.push('wd');
   if (a.has_ac === false)                          fails.push('ac');
-  if (a.has_parking === false)                     fails.push('parking');
   if (a.rent && a.rent > MAX_RENT && a.rent <= MAX_RENT + 200) fails.push('budget');
   if (a.commute && a.commute > MAX_COMMUTE)        fails.push('commute');
   if (fails.length !== 1) return false;
   // The non-failing must-haves must be confirmed (not null/unknown)
   if (!fails.includes('wd')      && a.has_wd      !== true) return false;
   if (!fails.includes('ac')      && a.has_ac      !== true) return false;
-  if (!fails.includes('parking') && a.has_parking !== true) return false;
   if (!fails.includes('budget')  && (!a.rent || a.rent > MAX_RENT)) return false;
   if (!fails.includes('commute') && a.commute && a.commute > MAX_COMMUTE) return false;
   return true;
@@ -1312,7 +1341,7 @@ function isNearMiss(a) {
 function clearFilters() {
   get('search-input').value = ''; get('filter-status').value = 'all';
   get('filter-criteria').value = 'all'; get('sort-by').value = 'score_desc';
-  amenityFilters.wd = amenityFilters.ac = amenityFilters.parking = amenityFilters.hardwood = false;
+  amenityFilters.wd = amenityFilters.ac = amenityFilters.hardwood = false;
   updateAmenityChips();
   applyFilters();
 }
@@ -1347,6 +1376,51 @@ get('modal').addEventListener('click', e => { if (e.target === get('modal')) clo
 // SHORTLIST  (updated 2026-06-04 — availability refresh)
 // ═══════════════════════════════════════════════════════
 const SHORTLIST = [
+  { name:'Cezanne', address:'455 Brahms Way, Sunnyvale, CA 94087',
+    url:'https://www.deanzaproperties.com/south-bay-area/cezanne-apartments/#floorplans', lat:37.3631011, lng:-122.0290373,
+    rent:2400, sqft:650, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (De Anza Properties) — 1BR ~650 sqft from $2,400 (–$2,450). PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED on-site laundry (NOT in-unit W/D), 1 assigned covered parking included, carpet/vinyl flooring (not hardwood), NO PETS. AC not listed — verify on tour. Sunnyvale.' },
+
+  { name:'Apricot Pit', address:'400 E Remington Dr, Sunnyvale, CA 94087',
+    url:'https://www.deanzaproperties.com/south-bay-area/apricot-pit-apartments/#floorplans', lat:37.3582624, lng:-122.0290559,
+    rent:2625, sqft:550, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (De Anza Properties) — 1BR junior ~550 sqft from $2,625. PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED laundry room (NOT in-unit W/D), assigned covered parking included, hardwood floors, NO PETS. AC not listed — verify on tour/call (408) 738-4862. Sunnyvale.' },
+
+  { name:'Shadowbrook', address:'235 S Bernardo Avenue, Sunnyvale, CA 94086',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/shadowbrook#pricingAndFloorPlanBox', lat:37.3800198, lng:-122.056577,
+    rent:3615, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,615. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
+
+  { name:'Kensington Place', address:'1220 N Fair Oaks Avenue, Sunnyvale, CA 94089',
+    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/kensington-place#pricingAndFloorPlanBox', lat:37.4044072, lng:-122.0085489,
+    rent:3522, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,437. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
+
+  { name:'Boardwalk', address:'3770 Flora Vista Avenue, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/boardwalk#pricingAndFloorPlanBox', lat:37.34692, lng:-121.9919766,
+    rent:3787, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,658. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
+
+  { name:'The Biltmore', address:'10159 S Blaney Avenue, Cupertino, CA 95014',
+    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-biltmore#pricingAndFloorPlanBox', lat:37.3213625, lng:-122.0245491,
+    rent:3731, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,691. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Cupertino.' },
+
+  { name:'Cobalt', address:'50 Saratoga Avenue, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/cobalt#pricingAndFloorPlanBox', lat:37.3240741, lng:-121.9706452,
+    rent:3485, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,485. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
+
+  { name:'Hearth', address:'2870 Kaiser Drive, Santa Clara, CA 95051',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/hearth#pricingAndFloorPlanBox', lat:37.341778, lng:-121.977995,
+    rent:3483, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,409. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
+
+  { name:'Mansion Grove', address:'502 Mansion Park Drive, Santa Clara, CA 95054',
+    url:'https://prometheusapartments.com/ca/santa-clara-apartments/mansion-grove#pricingAndFloorPlanBox', lat:37.3986946, lng:-121.9439508,
+    rent:3260, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    notes:'New listing (Prometheus) — 1BR from $3,244. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
+
   { name:'Parallel', address:'1141 W Olive Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/parallel#pricingAndFloorPlanBox', lat:37.3747455, lng:-122.0533144,
     rent:3116, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
@@ -1360,13 +1434,13 @@ const SHORTLIST = [
 
   { name:'City Gate at Cupertino', address:'5608 Stevens Creek Blvd, Cupertino, CA 95014',
     url:'https://www.equityapartments.com/san-francisco-bay/cupertino/city-gate-at-cupertino-apartments##bedroom-type-section-1', lat:37.3225492, lng:-122.0018172,
-    rent:3208, sqft:728, available:'2026-06-30', commute:24, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3218, sqft:728, available:'2026-06-30', commute:24, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     plans:[{label:'1 Bed A',sqft:728,rent:3253,available:'2026-07-17'},{label:'1 Bed A',sqft:728,rent:3256,available:'2026-06-30'},{label:'1 Bed B',sqft:739,rent:3253,available:'2026-07-17'},{label:'1 Bed B',sqft:739,rent:3287,available:'2026-07-03'}],
     notes:'1BR from $3,253 (728-739 sqft), available late June/July. In-unit W/D + AC confirmed. Renovated, smart home features, courtyard views. Underground parking included — confirm if free. Navajo flooring. Equity Apartments. Cupertino.' },
 
   { name:'The Verdant', address:'3700 Casa Verde St, San Jose, CA 95134',
     url:'https://www.verdant-apts.com/ca/san-jose/floorplans', lat:37.413064, lng:-121.939512,
-    rent:3126, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    rent:3135, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
     plans:[{label:'A1',sqft:681,rent:3113,available:'2026-06-01'},{label:'A2',sqft:759,rent:3236,available:'2026-06-01'},{label:'A3',sqft:830,rent:3260,available:'2026-06-06'}],
     notes:'1BR from $3,113 (A1, 681 sqft, available now). In-unit W/D + central AC confirmed. Gated garage parking included (free). Village-style community, North San Jose. Flooring unconfirmed.' },
 
@@ -1378,7 +1452,7 @@ const SHORTLIST = [
 
   { name:'Bella Vista Apartments', address:'1500 Vista Club Cir, Santa Clara, CA 95054',
     url:'https://www.bellavista-apartments.com/apartments/ca/santa-clara/floor-plans#/?beds=1', lat:37.402502, lng:-121.953418,
-    rent:3018, sqft:null, available:null, commute:12, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:2751, sqft:null, available:null, commute:12, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
     notes:'1BR from $2,733, 10 floor plans ranging 509-1,175 sqft. Gated community near Levi\'s Stadium, North Santa Clara. All amenities (W/D, AC, parking) unconfirmed — verify. Call (408) 496-6300.' },
 
   { name:'Villas on the Boulevard', address:'2615 El Camino Real, Santa Clara, CA 95051',
@@ -1396,13 +1470,13 @@ const SHORTLIST = [
 
   { name:'Riley Square', address:'3707 Poinciana Dr, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/riley-square/floor-plans-and-pricing', lat:37.359603, lng:-121.9991017,
-    rent:3017, sqft:630, available:null, commute:15, has_wd:true, has_ac:false, has_parking:null, has_hardwood:true,
+    rent:2857, sqft:630, available:null, commute:15, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     status:'toured',
     plans:[{label:'1BR',sqft:630,rent:3017,available:'2026-06-01'},{label:'1BR',sqft:630,rent:3017,available:'2026-06-19'}],
-    notes:'TOURED Jun 4 — decent apartments, average community. FAILS AC: window AC in living room only (not split/central). In-unit W/D confirmed (located inside bathroom in bedroom — unusual layout). Good kitchen. Good sofa/TV space. Walk-in closet. Bathroom inside bedroom. Unit 73 better than 68. Good option only if rent drops below $2,750. Parking: used to be free but reviews say now paid — verify current policy. Reviews: 2.7 stars (72), train/crow/street noise, water shutoffs ~2x/month, car break-ins (4 reported), excessive move-out charges, parking now paid. Essex.' },
+    notes:'TOURED Jun 4 — decent apartments, average community. AC: window AC in living room only (not split/central, but counts as AC). In-unit W/D confirmed (located inside bathroom in bedroom — unusual layout). Good kitchen. Good sofa/TV space. Walk-in closet. Bathroom inside bedroom. Unit 73 better than 68. Good option only if rent drops below $2,750. Parking: used to be free but reviews say now paid — verify current policy. Reviews: 2.7 stars (72), train/crow/street noise, water shutoffs ~2x/month, car break-ins (4 reported), excessive move-out charges, parking now paid. Essex.' },
 
   { name:'Domicilio', address:'431 El Camino Real, Santa Clara, CA 95050',
-    url:'https://www.domicilioapts.com/floorplans?Beds=1', lat:37.3471848, lng:-121.933128,
+    url:'https://www.domicilioapts.com/floorplans?Beds=1&oll_Beds=1', lat:37.3471848, lng:-121.933128,
     rent:3372, sqft:871, available:'2026-06-25', commute:17, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     promo:'2 Weeks Free — move in by Jun 30',
     plans:[{label:'Ponti',sqft:871,rent:3298,available:null},{label:'Ponti 1214',sqft:900,rent:3439,available:'2026-06-01'},{label:'Ponti 1302',sqft:900,rent:3444,available:'2026-06-25'}],
@@ -1430,20 +1504,20 @@ const SHORTLIST = [
 
   { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
     url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments##bedroom-type-section-1', lat:37.3992024, lng:-121.9564515,
-    rent:3307, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3322, sqft:790, available:'2026-06-05', commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'1 Bed A',sqft:790,rent:2922,available:'2026-06-05'}],
     notes:'1BR: 790 sqft, $3,297 (confirmed). Available Jun 5. In-unit W/D + central AC confirmed. Private garage — confirm if included in rent. Hard surface flooring in renovated units. Equity Apartments. Refreshed 2026-06-01.' },
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
-    rent:3373, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
+    rent:3387, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
     status:'toured',
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. NO AC (central heater only) — portable AC rental +$40/mo available for summer. Sonoma: shared laundry per building, NO in-unit W/D. Walk-in closet. Santa Barbara W/D unconfirmed — verify. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
 
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
-    rent:3232, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    rent:3247, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
     status:'toured',
     promo:'1 Week Free on Select Apartments',
     plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
@@ -1451,7 +1525,7 @@ const SHORTLIST = [
 
   { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square/floor-plans-and-pricing', lat:37.381926, lng:-122.0449243,
-    rent:3257, sqft:735, available:null, commute:11, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3249, sqft:735, available:null, commute:11, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     plans:[{label:'1BR/1BA',sqft:735,rent:3067,available:null}],
     notes:'TOURED Jun 1. Split AC in both living room + bedroom confirmed. Renovated. Gas stove. Good patio. Units 147 and 69 are the best ones. 1 assigned parking spot included. Guest parking on street. NOISE CONCERNS: Caltrain audible from unit (close to tracks). Reviews: upstairs neighbor noise reported by multiple residents — these are ground-floor units so risk is real. Early AM construction/leaf blower noise. Package theft reported, security gate broken at times. Significant rent increase at renewal (reports of $300-800 jumps). Essex.' },
@@ -1477,7 +1551,7 @@ const SHORTLIST = [
 
   { name:'Park Central Apartments', address:'1050 Benton St, Santa Clara, CA 95050',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/park-central#pricingAndFloorPlanBox', lat:37.3500621, lng:-121.9465888,
-    rent:3284, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3311, sqft:662, available:null, commute:18, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'Plan 1A',sqft:662,rent:2993,available:null}],
     notes:'1BR from $3,254 (was $3,159 — increased). In-unit W/D (may not apply to first-floor — verify). Built-in AC. Parking listed free — confirm. Floor type unspecified. Prometheus. Refreshed 2026-06-01.' },
 
@@ -1512,14 +1586,14 @@ const SHORTLIST = [
 
   { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce#pricingAndFloorPlanBox', lat:37.3654247, lng:-122.0267622,
-    rent:3280, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3338, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     status:'toured',
     plans:[{label:'Plan 1A',sqft:546,rent:2948,available:null},{label:'Plan 1D',sqft:676,rent:3044,available:null},{label:'Plan 1C',sqft:572,rent:3131,available:null},{label:'Plan 1B',sqft:570,rent:3206,available:null}],
     notes:'TOURED Jun 3 — great community and amenities but underwhelming floor plans. 2 split ACs confirmed. Modern appliances but NO dishwasher. In-unit W/D confirmed. Parking not confirmed free — verify. 21-acre campus, 3 pools, nice grounds. Reviews: thin walls/noise from upstairs (especially lower floors), pest reports (bed bugs, cockroaches, rats), management described as rude by some reviewers, good amenities maintained. Prometheus.' },
 
   { name:'The Markham', address:'20800 Homestead Road, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-markham#pricingAndFloorPlanBox', lat:37.3375762, lng:-122.0292813,
-    rent:3335, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3385, sqft:660, available:null, commute:21, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     promo:'2 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1AR',sqft:660,rent:3285,available:'2026-06-02'},{label:'Plan 1BR',sqft:750,rent:3397,available:'2026-06-02'},{label:'Plan 1CR',sqft:770,rent:3484,available:'2026-06-17'},{label:'Plan 1CR (higher)',sqft:770,rent:3559,available:'2026-06-07'},{label:'Plan 1E',sqft:795,rent:3628,available:'2026-06-11'}],
@@ -1535,13 +1609,13 @@ const SHORTLIST = [
 
   { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
     url:'https://www.venue-apts.com/floorplans', lat:37.412722, lng:-121.9392808,
-    rent:3281, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3284, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
     plans:[{label:'A1',sqft:784,rent:3357,available:'2026-08-04'},{label:'A2',sqft:824,rent:3397,available:null},{label:'A3',sqft:875,rent:3522,available:'2026-07-11'},{label:'A4',sqft:1022,rent:3300,available:null}],
     notes:'LEED Gold. 1BR from $3,263 (was $3,251). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free. Refreshed 2026-06-01.' },
 
   { name:'Aire Apartments', address:'3401 Iron Point Drive, San Jose, CA 95134',
     url:'https://aireliving.com/floorplans/', lat:37.4051669, lng:-121.9314879,
-    rent:3416, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3370, sqft:864, available:null, commute:18, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     promo:'2 Weeks Free on Select Apartments',
     plans:[{label:'A8',sqft:747,rent:3512,available:'2026-06-10'},{label:'A14',sqft:795,rent:3445,available:null},{label:'A21',sqft:864,rent:3415,available:null},{label:'A23',sqft:898,rent:3515,available:'2026-06-02'},{label:'A27',sqft:979,rent:3752,available:null}],
     notes:'1BR from $3,267 (A1, 682 sqft) — now within budget (was $3,445). PROMO: 6 Weeks Free but only 1 apt left — act fast. Full-size in-unit W/D. Central AC + Nest. 1 parking space. LVP flooring. Shea. Refreshed 2026-06-01. OVER BUDGET as of 2026-06-02: lowest 1BR now $3,415.' },
@@ -1553,57 +1627,12 @@ const SHORTLIST = [
     notes:'1BR from ~$2,614 (725 sqft) — notable drop from $2,967; verify current pricing on site. 1 parking space included; extra covered +$100/mo. Hardwood in select units — verify. Essex. Refreshed 2026-06-01.' },
 
   { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
-    url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/', lat:37.4003398, lng:-121.9245178,
+    url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/#apartments', lat:37.4003398, lng:-121.9245178,
     rent:3262, sqft:540, available:'2026-06-11', commute:17, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     promo:'Up to 2 Weeks Free on select floor plans',
     plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
     notes:'TOURED Jun 2 — excellent apartments, amenities, and neighborhood. Too pricey. AVOID unit 107 (red flag). In-unit W/D confirmed. Central AC. LVP floors. 2-level gated garage. Shea Properties. Reviews: 530+ 5-star Google reviews, safe community, responsive maintenance. Watch out for car break-ins (reported), high move-out charges, and steep rent increases at renewal.' },
-
-  { name:'Mansion Grove', address:'502 Mansion Park Drive, Santa Clara, CA 95054',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/mansion-grove#pricingAndFloorPlanBox', lat:37.3986946, lng:-121.9439508,
-    rent:3244, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,244. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
-
-  { name:'Hearth', address:'2870 Kaiser Drive, Santa Clara, CA 95051',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/hearth#pricingAndFloorPlanBox', lat:37.341778, lng:-121.977995,
-    rent:3409, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,409. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
-
-  { name:'Cobalt', address:'50 Saratoga Avenue, Santa Clara, CA 95051',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/cobalt#pricingAndFloorPlanBox', lat:37.3240741, lng:-121.9706452,
-    rent:3485, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,485. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
-
-  { name:'The Biltmore', address:'10159 S Blaney Avenue, Cupertino, CA 95014',
-    url:'https://prometheusapartments.com/ca/cupertino-apartments/the-biltmore#pricingAndFloorPlanBox', lat:37.3213625, lng:-122.0245491,
-    rent:3691, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,691. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Cupertino.' },
-
-  { name:'Boardwalk', address:'3770 Flora Vista Avenue, Santa Clara, CA 95051',
-    url:'https://prometheusapartments.com/ca/santa-clara-apartments/boardwalk#pricingAndFloorPlanBox', lat:37.34692, lng:-121.9919766,
-    rent:3658, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,658. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
-
-  { name:'Kensington Place', address:'1220 N Fair Oaks Avenue, Sunnyvale, CA 94089',
-    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/kensington-place#pricingAndFloorPlanBox', lat:37.4044072, lng:-122.0085489,
-    rent:3437, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,437. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
-
-  { name:'Shadowbrook', address:'235 S Bernardo Avenue, Sunnyvale, CA 94086',
-    url:'https://prometheusapartments.com/ca/sunnyvale-apartments/shadowbrook#pricingAndFloorPlanBox', lat:37.3800198, lng:-122.056577,
-    rent:3615, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (Prometheus) — 1BR from $3,615. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Sunnyvale.' },
-
-  { name:'Apricot Pit', address:'400 E Remington Dr, Sunnyvale, CA 94087',
-    url:'https://www.deanzaproperties.com/south-bay-area/apricot-pit-apartments/#floorplans', lat:37.3582624, lng:-122.0290559,
-    rent:2625, sqft:550, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (De Anza Properties) — 1BR junior ~550 sqft from $2,625. PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED laundry room (NOT in-unit W/D), assigned covered parking included, hardwood floors, NO PETS. AC not listed — verify on tour/call (408) 738-4862. Sunnyvale.' },
-
-  { name:'Cezanne', address:'455 Brahms Way, Sunnyvale, CA 94087',
-    url:'https://www.deanzaproperties.com/south-bay-area/cezanne-apartments/#floorplans', lat:37.3631011, lng:-122.0290373,
-    rent:2400, sqft:650, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
-    notes:'New listing (De Anza Properties) — 1BR ~650 sqft from $2,400 (–$2,450). PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED on-site laundry (NOT in-unit W/D), 1 assigned covered parking included, carpet/vinyl flooring (not hardwood), NO PETS. AC not listed — verify on tour. Sunnyvale.' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -1612,7 +1641,7 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/#community-unit-listings', lat:37.3877241, lng:-121.993485,
-    rent:3690, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3705, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
 
@@ -1626,7 +1655,7 @@ const IMPORT_FIELDS = ['address','commute','has_wd','has_ac','has_parking','has_
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 10; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 11; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
@@ -1708,32 +1737,44 @@ function purgeRemoved() {
 // HISTORICAL PRICE SEED  (from git snapshots)
 // ═══════════════════════════════════
 const PRICE_HISTORY_SEED = [
+  {name:'Cezanne', date:'2026-06-08', rent:2400},
+  {name:'Apricot Pit', date:'2026-06-08', rent:2625},
+  {name:'Shadowbrook', date:'2026-06-08', rent:3615},
+  {name:'Kensington Place', date:'2026-06-08', rent:3437},
+  {name:'Kensington Place', date:'2026-06-09', rent:3522},
+  {name:'Boardwalk', date:'2026-06-08', rent:3658},
+  {name:'Boardwalk', date:'2026-06-09', rent:3787},
+  {name:'The Biltmore', date:'2026-06-08', rent:3691},
+  {name:'The Biltmore', date:'2026-06-09', rent:3731},
+  {name:'Cobalt', date:'2026-06-08', rent:3485},
+  {name:'Hearth', date:'2026-06-08', rent:3409},
+  {name:'Hearth', date:'2026-06-09', rent:3483},
+  {name:'Mansion Grove', date:'2026-06-08', rent:3244},
+  {name:'Mansion Grove', date:'2026-06-09', rent:3260},
   {name:'Parallel', date:'2026-06-05', rent:3116},
   {name:'The Podium', date:'2026-06-04', rent:3185},
   {name:'The Podium', date:'2026-06-05', rent:3185},
   {name:'The Podium', date:'2026-06-08', rent:2950},
   {name:'City Gate at Cupertino', date:'2026-06-04', rent:3253},
   {name:'City Gate at Cupertino', date:'2026-06-05', rent:3223},
-  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3218},
-  {name:'City Gate at Cupertino', date:'2026-06-05', rent:3223},
   {name:'City Gate at Cupertino', date:'2026-06-07', rent:3208},
+  {name:'City Gate at Cupertino', date:'2026-06-09', rent:3218},
   {name:'The Verdant', date:'2026-06-04', rent:3113},
   {name:'The Verdant', date:'2026-06-05', rent:3104},
-  {name:'The Verdant', date:'2026-06-07', rent:3117},
   {name:'The Verdant', date:'2026-06-07', rent:3126},
-  {name:'Sunnyvale Town Center', date:'2026-06-04', rent:2495},
+  {name:'The Verdant', date:'2026-06-09', rent:3135},
   {name:'Sunnyvale Town Center', date:'2026-06-04', rent:2795},
   {name:'Sunnyvale Town Center', date:'2026-06-05', rent:2795},
-  {name:'Bella Vista Apartments', date:'2026-06-04', rent:2733},
   {name:'Bella Vista Apartments', date:'2026-06-04', rent:3018},
   {name:'Bella Vista Apartments', date:'2026-06-05', rent:3018},
+  {name:'Bella Vista Apartments', date:'2026-06-09', rent:2751},
   {name:'Villas on the Boulevard', date:'2026-06-04', rent:3208},
   {name:'Villas on the Boulevard', date:'2026-06-05', rent:3631},
-  {name:'Halford Gardens', date:'2026-06-04', rent:2795},
   {name:'Halford Gardens', date:'2026-06-04', rent:3095},
   {name:'Halford Gardens', date:'2026-06-05', rent:3095},
   {name:'Riley Square', date:'2026-06-04', rent:3017},
   {name:'Riley Square', date:'2026-06-05', rent:3017},
+  {name:'Riley Square', date:'2026-06-09', rent:2857},
   {name:'Domicilio', date:'2026-06-04', rent:3298},
   {name:'Domicilio', date:'2026-06-05', rent:3298},
   {name:'Domicilio', date:'2026-06-07', rent:3372},
@@ -1744,40 +1785,36 @@ const PRICE_HISTORY_SEED = [
   {name:'Marina Cove', date:'2026-06-07', rent:3087},
   {name:'Epic Apartments', date:'2026-06-02', rent:3209},
   {name:'Epic Apartments', date:'2026-06-03', rent:3107},
-  {name:'Epic Apartments', date:'2026-06-05', rent:3209},
-  {name:'Epic Apartments', date:'2026-06-05', rent:3147},
-  {name:'Epic Apartments', date:'2026-06-05', rent:3209},
   {name:'Epic Apartments', date:'2026-06-05', rent:3147},
   {name:'Epic Apartments', date:'2026-06-07', rent:3137},
   {name:'Avalon Silicon Valley', date:'2026-06-01', rent:3215},
   {name:'Avalon Silicon Valley', date:'2026-06-03', rent:3215},
-  {name:'Avalon Silicon Valley', date:'2026-06-05', rent:3215},
   {name:'Avalon Silicon Valley', date:'2026-06-05', rent:3700},
   {name:'Avalon Silicon Valley', date:'2026-06-07', rent:3690},
+  {name:'Avalon Silicon Valley', date:'2026-06-09', rent:3705},
   {name:'Estancia at Santa Clara', date:'2026-06-01', rent:3312},
   {name:'Estancia at Santa Clara', date:'2026-06-03', rent:3312},
   {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3317},
-  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3312},
-  {name:'Estancia at Santa Clara', date:'2026-06-05', rent:3317},
   {name:'Estancia at Santa Clara', date:'2026-06-07', rent:3307},
+  {name:'Estancia at Santa Clara', date:'2026-06-09', rent:3322},
   {name:'Mission Pointe by Windsor', date:'2026-06-01', rent:3189},
   {name:'Mission Pointe by Windsor', date:'2026-06-03', rent:3182},
-  {name:'Mission Pointe by Windsor', date:'2026-06-05', rent:3189},
   {name:'Mission Pointe by Windsor', date:'2026-06-05', rent:3373},
+  {name:'Mission Pointe by Windsor', date:'2026-06-09', rent:3387},
   {name:'Orchard Glen Apartments', date:'2026-06-01', rent:3232},
   {name:'Orchard Glen Apartments', date:'2026-06-03', rent:2665},
   {name:'Orchard Glen Apartments', date:'2026-06-05', rent:3232},
+  {name:'Orchard Glen Apartments', date:'2026-06-09', rent:3247},
   {name:'Magnolia Square', date:'2026-06-01', rent:3257},
   {name:'Magnolia Square', date:'2026-06-03', rent:3067},
   {name:'Magnolia Square', date:'2026-06-05', rent:3257},
+  {name:'Magnolia Square', date:'2026-06-09', rent:3249},
   {name:'Sage at Cupertino', date:'2026-06-01', rent:3087},
   {name:'Sage at Cupertino', date:'2026-06-03', rent:3087},
   {name:'Sage at Cupertino', date:'2026-06-05', rent:3087},
   {name:'Sage at Cupertino', date:'2026-06-07', rent:3237},
   {name:'The Montclaire', date:'2026-06-01', rent:3247},
   {name:'The Montclaire', date:'2026-06-03', rent:3247},
-  {name:'The Montclaire', date:'2026-06-05', rent:3247},
-  {name:'The Montclaire', date:'2026-06-05', rent:3239},
   {name:'The Montclaire', date:'2026-06-05', rent:3247},
   {name:'The Montclaire', date:'2026-06-07', rent:3239},
   {name:'Cupertino City Center', date:'2026-06-01', rent:3152},
@@ -1788,6 +1825,7 @@ const PRICE_HISTORY_SEED = [
   {name:'Park Central Apartments', date:'2026-06-05', rent:3253},
   {name:'Park Central Apartments', date:'2026-06-07', rent:3289},
   {name:'Park Central Apartments', date:'2026-06-08', rent:3284},
+  {name:'Park Central Apartments', date:'2026-06-09', rent:3311},
   {name:'Oak & Umber Apartments', date:'2026-06-01', rent:3227},
   {name:'Oak & Umber Apartments', date:'2026-06-03', rent:3186},
   {name:'Oak & Umber Apartments', date:'2026-06-05', rent:3368},
@@ -1807,10 +1845,12 @@ const PRICE_HISTORY_SEED = [
   {name:'Spruce Apartments', date:'2026-06-01', rent:3280},
   {name:'Spruce Apartments', date:'2026-06-03', rent:3330},
   {name:'Spruce Apartments', date:'2026-06-05', rent:3280},
+  {name:'Spruce Apartments', date:'2026-06-09', rent:3338},
   {name:'The Markham', date:'2026-06-01', rent:3522},
   {name:'The Markham', date:'2026-06-03', rent:3522},
   {name:'The Markham', date:'2026-06-05', rent:3522},
   {name:'The Markham', date:'2026-06-07', rent:3335},
+  {name:'The Markham', date:'2026-06-09', rent:3385},
   {name:'Villages at Cupertino', date:'2026-06-01', rent:3000},
   {name:'Villages at Cupertino', date:'2026-06-03', rent:3118},
   {name:'Villages at Cupertino', date:'2026-06-05', rent:3000},
@@ -1819,21 +1859,22 @@ const PRICE_HISTORY_SEED = [
   {name:'Venue Apartments', date:'2026-06-05', rent:3275},
   {name:'Venue Apartments', date:'2026-06-07', rent:3278},
   {name:'Venue Apartments', date:'2026-06-08', rent:3281},
+  {name:'Venue Apartments', date:'2026-06-09', rent:3284},
   {name:'Aire Apartments', date:'2026-06-01', rent:3415},
   {name:'Aire Apartments', date:'2026-06-03', rent:3415},
   {name:'Aire Apartments', date:'2026-06-05', rent:3416},
+  {name:'Aire Apartments', date:'2026-06-09', rent:3370},
   {name:'Fountains at River Oaks', date:'2026-06-01', rent:3399},
   {name:'Fountains at River Oaks', date:'2026-06-03', rent:3399},
   {name:'Fountains at River Oaks', date:'2026-06-05', rent:3399},
   {name:'Fountains at River Oaks', date:'2026-06-07', rent:3397},
   {name:'Elan at River Oaks', date:'2026-06-01', rent:3232},
   {name:'Elan at River Oaks', date:'2026-06-03', rent:3198},
-  {name:'Elan at River Oaks', date:'2026-06-05', rent:3232},
   {name:'Elan at River Oaks', date:'2026-06-05', rent:3262},
 ];
 
 function seedHistoricalPrices() {
-  if (localStorage.getItem('kalyan_history_seeded_v3')) return;
+  if (localStorage.getItem('kalyan_history_seeded_v4')) return;
   PRICE_HISTORY_SEED.forEach(({name, date, rent}) => {
     const a = apartments.find(x => x.name.toLowerCase() === name.toLowerCase());
     if (!a) return;
@@ -1843,7 +1884,7 @@ function seedHistoricalPrices() {
       a.price_history.sort((x, y) => x.date.localeCompare(y.date));
     }
   });
-  localStorage.setItem('kalyan_history_seeded_v3', '1');
+  localStorage.setItem('kalyan_history_seeded_v4', '1');
   saveData();
 }
 
