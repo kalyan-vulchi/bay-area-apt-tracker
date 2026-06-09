@@ -1234,7 +1234,7 @@ function renderSummary() {
   const statusDist = {};
   apts.forEach(a => { statusDist[a.status || 'not_visited'] = (statusDist[a.status || 'not_visited'] || 0) + 1; });
   const statusHtml = Object.entries(statusDist).map(([s, c]) =>
-    `<p class="flex justify-between"><span class="capitalize">${s}:</span><span class="font-semibold">${c}</span></p>`
+    `<p class="flex justify-between"><span>${STATUS_LABEL[s] || s.replace(/_/g,' ')}:</span><span class="font-semibold">${c}</span></p>`
   ).join('');
 
   // Top candidates — only picks that actually fit the hunt criteria
