@@ -128,6 +128,8 @@
     <option value="commute_ok">🚗 Commute &le; 30 min</option>
     <option value="has_promo">🏷️ Has Promotion</option>
     <option value="avail_soon">🗓️ Available &le; 30 days</option>
+    <option value="not_scrapable">✋ Manual price update (not auto)</option>
+    <option value="scrapable">🤖 Auto-priced (scrapable)</option>
     <option value="missing_dealbreaker">Missing Deal-breaker</option>
   </select>
   <div class="flex gap-1 items-center">
@@ -524,6 +526,8 @@ function applyFilters() {
     if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
     if (cr === 'near_miss'           && !isNearMiss(a)) return false;
     if (cr === 'needs_verify'        && !(a.status !== 'toured' && a.rent && a.rent <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null))) return false;
+    if (cr === 'scrapable'           && a.scrapable !== true) return false;
+    if (cr === 'not_scrapable'       && a.scrapable === true) return false;
     return true;
   });
 
@@ -1394,12 +1398,12 @@ get('modal').addEventListener('click', e => { if (e.target === get('modal')) clo
 const SHORTLIST = [
   { name:'Cezanne', address:'455 Brahms Way, Sunnyvale, CA 94087',
     url:'https://www.deanzaproperties.com/south-bay-area/cezanne-apartments/#floorplans', lat:37.3631011, lng:-122.0290373,
-    rent:2400, sqft:650, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:2400, sqft:650, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null, scrapable:true,
     notes:'New listing (De Anza Properties) — 1BR ~650 sqft from $2,400 (–$2,450). PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED on-site laundry (NOT in-unit W/D), 1 assigned covered parking included, carpet/vinyl flooring (not hardwood), NO PETS. AC not listed — verify on tour. Sunnyvale.' },
 
   { name:'Apricot Pit', address:'400 E Remington Dr, Sunnyvale, CA 94087',
     url:'https://www.deanzaproperties.com/south-bay-area/apricot-pit-apartments/#floorplans', lat:37.3582624, lng:-122.0290559,
-    rent:2625, sqft:550, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:2625, sqft:550, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null, scrapable:true,
     notes:'New listing (De Anza Properties) — 1BR junior ~550 sqft from $2,625. PENDING/VERIFY (per website, not toured; online laundry/amenity info has been wrong before): site lists SHARED laundry room (NOT in-unit W/D), assigned covered parking included, hardwood floors, NO PETS. AC not listed — verify on tour/call (408) 738-4862. Sunnyvale.' },
 
   { name:'Shadowbrook', address:'235 S Bernardo Avenue, Sunnyvale, CA 94086',
@@ -1444,7 +1448,7 @@ const SHORTLIST = [
 
   { name:'The Podium', address:'10100 Torre Ave, Cupertino, CA 95014',
     url:'https://www.deanzaproperties.com/south-bay-area/the-podium/#floorplans', lat:37.3220446, lng:-122.0265078,
-    rent:2950, sqft:805, available:'2026-07-04', commute:25, has_wd:null, has_ac:null, has_parking:false, has_hardwood:null,
+    rent:2950, sqft:805, available:'2026-07-04', commute:25, has_wd:null, has_ac:null, has_parking:false, has_hardwood:null, scrapable:true,
     plans:[{label:'Plan H',sqft:805,rent:3185,available:'2026-07-04'}],
     notes:'1BR Plan H: 805 sqft, $3,185-$3,385, available Jul 4. W/D in some units — verify. AC unconfirmed. Parking garage — paid (not included). NO PETS. Near Apple Park, De Anza College, Cupertino Library. De Anza Properties.' },
 
@@ -1456,13 +1460,13 @@ const SHORTLIST = [
 
   { name:'The Verdant', address:'3700 Casa Verde St, San Jose, CA 95134',
     url:'https://www.verdant-apts.com/ca/san-jose/floorplans', lat:37.413064, lng:-121.939512,
-    rent:3135, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    rent:3135, sqft:681, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null, scrapable:true,
     plans:[{label:'A1',sqft:681,rent:3113,available:'2026-06-01'},{label:'A2',sqft:759,rent:3236,available:'2026-06-01'},{label:'A3',sqft:830,rent:3260,available:'2026-06-06'}],
     notes:'1BR from $3,113 (A1, 681 sqft, available now). In-unit W/D + central AC confirmed. Gated garage parking included (free). Village-style community, North San Jose. Flooring unconfirmed.' },
 
   { name:'Sunnyvale Town Center', address:'201 W California Ave, Sunnyvale, CA 94086',
     url:'https://www.sunnyvaletowncenterapartments.com/floorplans?Beds=1', lat:37.3814734, lng:-122.0293963,
-    rent:2795, sqft:610, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:2795, sqft:610, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true, scrapable:true,
     promo:'Up to $1,000 off select units',
     notes:'1BR from ~$2,495 (550 sqft) or Large 1BR 610-650 sqft. In-unit W/D available. AC confirmed. Covered/carport parking — cost unknown, verify. Hardwood floor options. Very close to office (~8 min). Up to $1,000 off select units. Call (408) 353-0972.' },
 
@@ -1493,14 +1497,14 @@ const SHORTLIST = [
 
   { name:'Domicilio', address:'431 El Camino Real, Santa Clara, CA 95050',
     url:'https://www.domicilioapts.com/floorplans?Beds=1&oll_Beds=1', lat:37.3471848, lng:-121.933128,
-    rent:3372, sqft:871, available:'2026-06-25', commute:17, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:3372, sqft:871, available:'2026-06-25', commute:17, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true, scrapable:true,
     promo:'2 Weeks Free — move in by Jun 30',
     plans:[{label:'Ponti',sqft:871,rent:3298,available:null},{label:'Ponti 1214',sqft:900,rent:3439,available:'2026-06-01'},{label:'Ponti 1302',sqft:900,rent:3444,available:'2026-06-25'}],
     notes:'1BR Ponti plan: 871-900 sqft, from $3,298. Available now (1214) and Jun 25 (1302). Full-size in-unit W/D. AC confirmed. Wood-style flooring. Underground parking available — cost unknown, verify. Private balcony/patio, granite countertops, stainless appliances. Resort pool/spa, theater, 24hr gym. Near Santa Clara Transit Center (Caltrain/VTA). 2 Weeks Free if moved in by Jun 30. Greystar.' },
 
   { name:'River Terrace', address:'730 Agnew Rd, Santa Clara, CA 95054',
     url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/apartments-pricing/#/?sort=rent&sortdir=asc&beds=1', lat:37.3942417, lng:-121.9488377,
-    rent:3051, sqft:null, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3051, sqft:null, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false, scrapable:true,
     status:'toured',
     promo:'$500 off first month',
     notes:'TOURED Jun 3 — unit 213 is the only good option (slight road noise). Central AC + in-unit W/D confirmed. Good kitchen design. VERIFY: is unit 213 renovated? Ask leasing for specific amenities/finishes on 213. PAID PARKING (required): reserved garage $95/mo, additional space $90/mo, premium $105/mo. Walk-in closets, patio/balcony, granite countertops. No current availability — sign up for alerts. Reviews: UDR charges heavily on move-out, parking/locker fees extra, occasional marijuana smell weekends, theft reported, maintenance concerns. UDR.' },
@@ -1526,7 +1530,7 @@ const SHORTLIST = [
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
-    rent:3387, sqft:580, available:'2026-07-24', commute:4, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
+    rent:3387, sqft:580, available:'2026-07-24', commute:4, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true, scrapable:true,
     status:'toured',
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. AC: portable unit +$40/mo for summer (central heater built-in, no central A/C). W/D: in-unit in Santa Barbara floorplan; Sonoma uses shared laundry per building. Walk-in closet. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
@@ -1625,7 +1629,7 @@ const SHORTLIST = [
 
   { name:'Venue Apartments', address:'3737 Casa Verde St, San Jose, CA 95134',
     url:'https://www.venue-apts.com/floorplans', lat:37.412722, lng:-121.9392808,
-    rent:3284, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false,
+    rent:3284, sqft:784, available:'2026-07-11', commute:22, has_wd:true, has_ac:true, has_parking:false, has_hardwood:false, scrapable:true,
     plans:[{label:'A1',sqft:784,rent:3357,available:'2026-08-04'},{label:'A2',sqft:824,rent:3397,available:null},{label:'A3',sqft:875,rent:3522,available:'2026-07-11'},{label:'A4',sqft:1022,rent:3300,available:null}],
     notes:'LEED Gold. 1BR from $3,263 (was $3,251). Porcelain tile floors (NOT hardwood/LVP). In-unit W/D, central AC. Gated garage — verify if parking is free. Refreshed 2026-06-01.' },
 
@@ -1657,7 +1661,7 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/#community-unit-listings', lat:37.3877241, lng:-121.993485,
-    rent:3705, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null,
+    rent:3705, sqft:700, available:null, commute:8, has_wd:true, has_ac:true, has_parking:null, has_hardwood:null, scrapable:true,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. Up to $150/mo off select apts. AvalonBay. Refreshed 2026-06-01.' },
 
@@ -1667,7 +1671,10 @@ const CORPUS_LIST = [
 // IMPORT
 // ═══════════════════════════════════
 // Fields updated on every load for existing entries (never prices/links — those are version-gated)
-const IMPORT_FIELDS = ['address','commute','has_wd','has_ac','has_parking','has_hardwood','notes'];
+const IMPORT_FIELDS = ['address','commute','has_wd','has_ac','has_parking','has_hardwood','notes','scrapable'];
+// Fields the daily cron auto-pulls for SCRAPABLE listings — force-synced from code every load
+// (cron keeps code authoritative), so they update daily without a version bump.
+const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
@@ -1683,6 +1690,16 @@ function importList(source, listType) {
       IMPORT_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
       if (!a.list) a.list = listType;
       if (w.status && w.status !== 'not_visited' && a.status === 'not_visited') a.status = w.status;
+      // Scrapable listings: cron keeps code authoritative — force-sync price fields every load
+      // and log a history point when the rent changes (non-scrapable prices stay version-gated).
+      if (w.scrapable === true) {
+        if (w.rent && w.rent !== a.rent) {
+          if (!a.price_history) a.price_history = [];
+          if (a.price_history.length === 0 && a.rent) a.price_history.push({ date: a.added || today(), rent: a.rent });
+          a.price_history.push({ date: today(), rent: w.rent });
+        }
+        SCRAPE_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
+      }
       changed = true;
     } else {
       // New entry — seed everything including prices
@@ -1693,7 +1710,7 @@ function importList(source, listType) {
         has_wd: w.has_wd ?? null, has_ac: w.has_ac ?? null,
         has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
         status: w.status || 'not_visited', notes: w.notes || '',
-        plans: w.plans || [], promo: w.promo || null,
+        plans: w.plans || [], promo: w.promo || null, scrapable: w.scrapable || false,
         price_history: w.rent ? [{ date: today(), rent: w.rent }] : [],
         lat: w.lat, lng: w.lng, list: listType, added: today()
       });
@@ -1709,6 +1726,7 @@ function importPrices() {
   const allSource = [...SHORTLIST, ...CORPUS_LIST];
   const dateStr = today();
   allSource.forEach(w => {
+    if (w.scrapable === true) return; // scrapable listings force-sync in importList; skip version gate
     const idx = apartments.findIndex(a => a.name.toLowerCase() === w.name.toLowerCase());
     if (idx >= 0) {
       const a = apartments[idx];
