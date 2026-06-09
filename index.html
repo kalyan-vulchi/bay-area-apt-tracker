@@ -1423,7 +1423,7 @@ const SHORTLIST = [
 
   { name:'Parallel', address:'1141 W Olive Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/parallel#pricingAndFloorPlanBox', lat:37.3747455, lng:-122.0533144,
-    rent:3116, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:3116, sqft:null, available:null, commute:null, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     notes:'New listing added — needs verification.' },
 
   { name:'The Podium', address:'10100 Torre Ave, Cupertino, CA 95014',
@@ -1452,7 +1452,7 @@ const SHORTLIST = [
 
   { name:'Bella Vista Apartments', address:'1500 Vista Club Cir, Santa Clara, CA 95054',
     url:'https://www.bellavista-apartments.com/apartments/ca/santa-clara/floor-plans#/?beds=1', lat:37.402502, lng:-121.953418,
-    rent:2751, sqft:null, available:null, commute:12, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:2751, sqft:null, available:null, commute:12, has_wd:true, has_ac:null, has_parking:null, has_hardwood:null,
     notes:'1BR from $2,733, 10 floor plans ranging 509-1,175 sqft. Gated community near Levi\'s Stadium, North Santa Clara. All amenities (W/D, AC, parking) unconfirmed — verify. Call (408) 496-6300.' },
 
   { name:'Villas on the Boulevard', address:'2615 El Camino Real, Santa Clara, CA 95051',
@@ -1464,7 +1464,7 @@ const SHORTLIST = [
 
   { name:'Halford Gardens', address:'1901 Halford Ave, Santa Clara, CA 95051',
     url:'https://www.halfordapartments.com/apartments/ca/santa-clara/floor-plans-virtual-tours#/?beds=1', lat:37.3581777, lng:-121.998004,
-    rent:3095, sqft:null, available:null, commute:14, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:3095, sqft:null, available:null, commute:14, has_wd:null, has_ac:true, has_parking:null, has_hardwood:null,
     promo:'$1,000 off — Look & Lease',
     notes:'1BR from $2,795-$2,995. W/D confirmed for townhomes — verify for regular apartments. No pets allowed. $1,000 off Look & Lease promo. Call (650) 405-4766 to verify AC, parking, W/D for standard units.' },
 
@@ -1510,10 +1510,10 @@ const SHORTLIST = [
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
-    rent:3387, sqft:580, available:'2026-07-24', commute:4, has_wd:false, has_ac:false, has_parking:false, has_hardwood:false,
+    rent:3387, sqft:580, available:'2026-07-24', commute:4, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
     status:'toured',
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
-    notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. NO AC (central heater only) — portable AC rental +$40/mo available for summer. Sonoma: shared laundry per building, NO in-unit W/D. Walk-in closet. Santa Barbara W/D unconfirmed — verify. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
+    notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. AC: portable unit +$40/mo for summer (central heater built-in, no central A/C). W/D: in-unit in Santa Barbara floorplan; Sonoma uses shared laundry per building. Walk-in closet. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
 
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
@@ -1538,7 +1538,7 @@ const SHORTLIST = [
 
   { name:'The Montclaire', address:'450 N Mathilda Ave, Sunnyvale, CA 94085',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/the-montclaire/floor-plans-and-pricing', lat:37.3877562, lng:-122.0310719,
-    rent:3239, sqft:710, available:'2026-06-09', commute:9, has_wd:false, has_ac:true, has_parking:true, has_hardwood:false,
+    rent:3239, sqft:710, available:'2026-06-09', commute:9, has_wd:true, has_ac:true, has_parking:true, has_hardwood:false,
     plans:[{label:'Plan 1A',sqft:710,rent:2629,available:'2026-06-09'}],
     notes:'1BR from $2,799 (was $2,889). W/D in select units only — specifically request. Central AC confirmed. Parking included. Mix of wood-style and carpet. Near Caltrain. Save up to $1,200. Essex. Refreshed 2026-06-01.' },
 
@@ -1580,9 +1580,9 @@ const SHORTLIST = [
 
   { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
     url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone#pricingAndFloorPlanBox', lat:37.4036464, lng:-122.095064,
-    rent:3660, sqft:520, available:null, commute:24, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3660, sqft:520, available:null, commute:24, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
-    notes:'FAILS W/D: shared laundry only. 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
+    notes:'W/D: in-unit per latest update (earlier research showed shared laundry — confirm on tour). 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
 
   { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce#pricingAndFloorPlanBox', lat:37.3654247, lng:-122.0267622,
@@ -1601,7 +1601,7 @@ const SHORTLIST = [
 
   { name:'Villages at Cupertino', address:'20875 Valley Green Dr, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-villages-at-cupertino#pricingAndFloorPlanBox', lat:37.3330142, lng:-122.038348,
-    rent:3000, sqft:785, available:null, commute:21, has_wd:false, has_ac:false, has_parking:true, has_hardwood:true,
+    rent:3000, sqft:785, available:null, commute:21, has_wd:true, has_ac:false, has_parking:true, has_hardwood:true,
     status:'toured',
     promo:'Up to 2 Weeks Free on Select Apartments',
     plans:[{label:'Plan 1D - Classic w/ WD',sqft:785,rent:3118,available:null},{label:'Plan 1B - Renovated',sqft:643,rent:3139,available:'2026-06-03'},{label:'Plan 1C - Renovated w/ WD',sqft:695,rent:3241,available:null},{label:'Plan 1B - Renovated w/ WD',sqft:643,rent:3314,available:'2026-07-02'}],
