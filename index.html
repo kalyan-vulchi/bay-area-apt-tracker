@@ -1418,12 +1418,12 @@ const SHORTLIST = [
 
   { name:'Boardwalk', address:'3770 Flora Vista Avenue, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/boardwalk#pricingAndFloorPlanBox', lat:37.34692, lng:-121.9919766,
-    rent:3787, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:3762, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
     notes:'New listing (Prometheus) — 1BR from $3,658. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Santa Clara.' },
 
   { name:'The Biltmore', address:'10159 S Blaney Avenue, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/the-biltmore#pricingAndFloorPlanBox', lat:37.3213625, lng:-122.0245491,
-    rent:3731, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
+    rent:3781, sqft:null, available:null, commute:null, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null,
     notes:'New listing (Prometheus) — 1BR from $3,691. Amenities (W/D, AC, parking, flooring) unconfirmed — verify. Cupertino.' },
 
   { name:'Cobalt', address:'50 Saratoga Avenue, Santa Clara, CA 95051',
@@ -1490,7 +1490,7 @@ const SHORTLIST = [
 
   { name:'Riley Square', address:'3707 Poinciana Dr, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/riley-square/floor-plans-and-pricing', lat:37.359603, lng:-121.9991017,
-    rent:2857, sqft:630, available:null, commute:15, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
+    rent:2999, sqft:630, available:null, commute:15, has_wd:true, has_ac:true, has_parking:null, has_hardwood:true,
     status:'toured',
     plans:[{label:'1BR',sqft:630,rent:3017,available:'2026-06-01'},{label:'1BR',sqft:630,rent:3017,available:'2026-06-19'}],
     notes:'TOURED Jun 4 — decent apartments, average community. AC: window AC in living room only (not split/central, but counts as AC). In-unit W/D confirmed (located inside bathroom in bedroom — unusual layout). Good kitchen. Good sofa/TV space. Walk-in closet. Bathroom inside bedroom. Unit 73 better than 68. Good option only if rent drops below $2,750. Parking: used to be free but reviews say now paid — verify current policy. Reviews: 2.7 stars (72), train/crow/street noise, water shutoffs ~2x/month, car break-ins (4 reported), excessive move-out charges, parking now paid. Essex.' },
@@ -1537,7 +1537,7 @@ const SHORTLIST = [
 
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
-    rent:3247, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
+    rent:3277, sqft:700, available:null, commute:19, has_wd:true, has_ac:true, has_parking:true, has_hardwood:null,
     status:'toured',
     promo:'1 Week Free on Select Apartments',
     plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
@@ -1552,7 +1552,7 @@ const SHORTLIST = [
 
   { name:'Sage at Cupertino', address:'175 Calvert Dr, Cupertino, CA 95014',
     url:'https://www.essexapartmenthomes.com/apartments/cupertino/sage-at-cupertino/floor-plans-and-pricing', lat:37.3207213, lng:-122.0022998,
-    rent:3237, sqft:685, available:'2026-06-05', commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3229, sqft:685, available:'2026-06-05', commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
     plans:[{label:'Plan 1A',sqft:685,rent:2969,available:null}],
     notes:'1BR from $2,819 (verify current pricing), available Jun 5. W/D in select units only — request specifically. Central AC. Parking included. LVP flooring. Near De Anza. Essex. Refreshed 2026-06-01.' },
 
@@ -1564,7 +1564,7 @@ const SHORTLIST = [
 
   { name:'Cupertino City Center', address:'20350 Stevens Creek Blvd, Cupertino, CA 95014',
     url:'https://prometheusapartments.com/ca/cupertino-apartments/cupertino-city-center#pricingAndFloorPlanBox', lat:37.3212816, lng:-122.0294461,
-    rent:3152, sqft:668, available:null, commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
+    rent:3148, sqft:668, available:null, commute:26, has_wd:false, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
     plans:[{label:'Plan 1C',sqft:647,rent:3178,available:null},{label:'Plan 1D',sqft:668,rent:2951,available:null},{label:'Plan 1A',sqft:701,rent:3200,available:null}],
     notes:'TOURED Jun 1 — good impression. FAILS W/D: shared laundry only (confirmed on tour). Split AC in living room confirmed. Hardwood floors entire unit confirmed. Walk-in closet + attached bathroom. Courtyard view. Good neighborhood. Open parking in garage (included). Reviews: concrete floors = good sound insulation between units, early morning landscaping noise (leaf blowers), some management complaints. Prometheus.' },
@@ -1678,7 +1678,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 11; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 12; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
