@@ -109,6 +109,9 @@
 <div class="bg-white border-b border-gray-200 px-4 py-2 flex flex-wrap gap-2 items-center sticky top-[57px] z-30">
   <input id="search-input" type="text" placeholder="Search name or address..." oninput="applyFilters()"
     class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48" />
+  <select id="filter-city" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <option value="all">All Cities</option>
+  </select>
   <select id="filter-status" onchange="applyFilters()" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
     <option value="all">All Statuses</option>
     <option value="not_visited">Not Visited</option>
@@ -478,6 +481,7 @@ function setTab(tab) {
 // STATS
 // ═══════════════════════════════════
 function renderStats() {
+  populateCityFilter();
   const all = apartments.filter(a => a.list === activeTab);
   const qual = all.filter(a => score(a).qualifies).length;
   const rents = all.map(a => a.rent).filter(Boolean);
@@ -500,8 +504,29 @@ function renderStats() {
 // ═══════════════════════════════════
 // FILTER + SORT
 // ═══════════════════════════════════
+// Pull the city out of an address like "455 Brahms Way, Sunnyvale, CA 94087"
+function cityOf(a) {
+  if (!a.address) return null;
+  const parts = a.address.split(',').map(s => s.trim());
+  const stIdx = parts.findIndex(p => /\b[A-Z]{2}\b\s+\d{5}/.test(p)); // the "CA 94087" chunk
+  if (stIdx > 0) return parts[stIdx - 1];
+  return parts.length >= 2 ? parts[parts.length - 2] : null;
+}
+
+// Rebuild the City dropdown from current data, preserving the active selection
+function populateCityFilter() {
+  const sel = get('filter-city');
+  if (!sel) return;
+  const prev = sel.value;
+  const cities = [...new Set(apartments.map(cityOf).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="all">All Cities</option>' +
+    cities.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = cities.includes(prev) ? prev : 'all';
+}
+
 function applyFilters() {
   const q   = get('search-input').value.toLowerCase();
+  const ct  = get('filter-city').value;
   const st  = get('filter-status').value;
   const cr  = get('filter-criteria').value;
   const srt = get('sort-by').value;
@@ -510,6 +535,7 @@ function applyFilters() {
   let list = apartments.filter(a => {
     if (a.list !== activeTab) return false;
     if (q && !a.name.toLowerCase().includes(q) && !(a.address||'').toLowerCase().includes(q)) return false;
+    if (ct !== 'all' && cityOf(a) !== ct) return false;
     if (st !== 'all' && a.status !== st) return false;
     // Must-have amenity chips (combinable, AND). Strict: confirmed true only.
     if (amenityFilters.wd       && a.has_wd !== true)       return false;
@@ -1387,7 +1413,7 @@ function isNearMiss(a) {
 }
 
 function clearFilters() {
-  get('search-input').value = ''; get('filter-status').value = 'all';
+  get('search-input').value = ''; get('filter-city').value = 'all'; get('filter-status').value = 'all';
   get('filter-criteria').value = 'all'; get('sort-by').value = 'score_desc';
   amenityFilters.wd = amenityFilters.ac = amenityFilters.hardwood = false;
   updateAmenityChips();
