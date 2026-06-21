@@ -1666,12 +1666,6 @@ const SHORTLIST = [
     plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
     notes:'TOURED Jun 11 — good interior, same as Alderwood. In-unit stackable W/D. One split AC in living room. One FREE assigned parking + open guest parking. Small gym. Heated pool + jacuzzi open all year. Potential traffic issue near entrance at peak times. 1BR from $3,026 (700 sqft). 4 Weeks Free on select units. Prometheus.' },
 
-  { name:'Madrone Apartments', address:'111 N Rengstorff Avenue, Mountain View, CA 94043',
-    url:'https://prometheusapartments.com/ca/mountain-view-apartments/madrone#pricingAndFloorPlanBox', lat:37.4036464, lng:-122.095064,
-    rent:3584, sqft:520, available:null, commute:24, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
-    plans:[{label:'Plan 1AR',sqft:520,rent:3064,available:null},{label:'Plan 1BR',sqft:648,rent:3156,available:null},{label:'Plan 1DR',sqft:656,rent:3140,available:null},{label:'Plan 1CR',sqft:653,rent:3390,available:null}],
-    notes:'W/D: in-unit per latest update (earlier research showed shared laundry — confirm on tour). 1BR from $3,237 (was $3,618 — verify if 1BR-specific). Free parking, LVP floors, AC. Mountain View. Prometheus. Refreshed 2026-06-01.' },
-
   { name:'Spruce Apartments', address:'655 S Fair Oaks Avenue, Sunnyvale, CA 94086',
     url:'https://prometheusapartments.com/ca/sunnyvale-apartments/spruce#pricingAndFloorPlanBox', lat:37.3654247, lng:-122.0267622,
     rent:3304, sqft:546, available:null, commute:12, has_wd:true, has_ac:true, has_parking:false, has_hardwood:true,
@@ -1826,7 +1820,8 @@ const REMOVED = [
   { name: 'River View Apartment Homes', reason: 'Personal choice — toured Jun 2: good apartments but min $3,400 on floors 2+, W/D confirmed. Reviews: mold reports, bad management, old AC units, ants in summer.' },
   { name: 'Waterford Place', reason: 'Removed' },
   { name: 'Renaissance Apartment Homes', reason: 'Removed' },
-  { name: 'Villa Del Sol', reason: 'Removed' }
+  { name: 'Villa Del Sol', reason: 'Removed' },
+  { name: 'Madrone Apartments', reason: 'Out of area — Mountain View, not South Bay/Sunnyvale target (removed Jun 21)' }
 ];
 function purgeRemoved() {
   let changed = false;
@@ -1942,10 +1937,6 @@ const PRICE_HISTORY_SEED = [
   {name:'Timberleaf Apartments', date:'2026-06-03', rent:3417},
   {name:'Timberleaf Apartments', date:'2026-06-05', rent:3417},
   {name:'Timberleaf Apartments', date:'2026-06-07', rent:3418},
-  {name:'Madrone Apartments', date:'2026-06-01', rent:3660},
-  {name:'Madrone Apartments', date:'2026-06-03', rent:3660},
-  {name:'Madrone Apartments', date:'2026-06-05', rent:3640},
-  {name:'Madrone Apartments', date:'2026-06-07', rent:3660},
   {name:'Spruce Apartments', date:'2026-06-01', rent:3280},
   {name:'Spruce Apartments', date:'2026-06-03', rent:3330},
   {name:'Spruce Apartments', date:'2026-06-05', rent:3280},
