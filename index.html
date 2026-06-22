@@ -1664,7 +1664,7 @@ const SHORTLIST = [
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/timberleaf#pricingAndFloorPlanBox', lat:37.3377674, lng:-121.9410545,
     rent:3420, sqft:700, available:null, commute:27, commute_off:16, dist_mi:12.7, has_wd:true, has_ac:true, has_parking:true, has_hardwood:true,
     status:'toured',
-    promo:'4 Weeks Free on Select Apartments',
+    promo:'Up to 2 Weeks Free Rent',
     plans:[{label:'Plan 1A',sqft:700,rent:3026,available:null}],
     notes:'TOURED Jun 11 — good interior, same as Alderwood. In-unit stackable W/D. One split AC in living room. One FREE assigned parking + open guest parking. Small gym. Heated pool + jacuzzi open all year. Potential traffic issue near entrance at peak times. 1BR from $3,026 (700 sqft). 4 Weeks Free on select units. Prometheus.' },
 
@@ -1745,7 +1745,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 16; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 17; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
