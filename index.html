@@ -1785,7 +1785,10 @@ function importList(source, listType) {
       // Always sync non-price fields
       IMPORT_FIELDS.forEach(f => { if (w[f] !== undefined) a[f] = w[f]; });
       if (!a.list) a.list = listType;
-      if (w.status && w.status !== 'not_visited' && a.status === 'not_visited') a.status = w.status;
+      // Adopt code status when it's further along the funnel than the browser's, so tours/applications
+      // I log propagate (e.g. scheduled -> toured). Never regress a status the browser advanced further.
+      const SR = { not_visited:0, scheduled:1, toured:2, waitlisted:3, applied:4, rejected:5 };
+      if (w.status && (SR[w.status]||0) > (SR[a.status]||0)) a.status = w.status;
       // Scrapable listings: cron keeps code authoritative — force-sync price fields every load
       // and log a history point when the rent changes (non-scrapable prices stay version-gated).
       if (w.scrapable === true) {
