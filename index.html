@@ -203,6 +203,13 @@
     </div>
     <div style="flex:1;min-height:0;position:relative">
       <canvas id="trends-chart"></canvas>
+      <div class="absolute bottom-2 right-2 flex gap-0.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg p-0.5 shadow-sm">
+        <button data-trange="1D" onclick="setTrendsRange('1D')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium" title="Last 2 prices">1D</button>
+        <button data-trange="1W" onclick="setTrendsRange('1W')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">1W</button>
+        <button data-trange="2W" onclick="setTrendsRange('2W')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">2W</button>
+        <button data-trange="1M" onclick="setTrendsRange('1M')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">1M</button>
+        <button data-trange="all" onclick="setTrendsRange('all')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">All</button>
+      </div>
     </div>
   </div>
   <div id="summary-panel" class="hidden w-full flex-col p-6 gap-6 overflow-y-auto">
@@ -399,7 +406,7 @@ let editingId = null, currentView = 'list', formCoords = { lat: null, lng: null 
 let activeTab = 'shortlist';
 let currentFilteredList = null; // null = no filter applied yet; array = active filter result
 let selectedAptId = null;
-let trendsChart = null;
+let trendsChart = null, trendsRange = 'all';
 let hiddenAptNames = new Set();
 
 const CHART_COLORS = [
@@ -1091,6 +1098,25 @@ function showLegendThenCollapse() {
 // ═══════════════════════════════════
 // TRENDS CHART
 // ═══════════════════════════════════
+function setTrendsRange(r) { trendsRange = r; renderTrends(); }
+function trendsWindowStart(dates, range) {
+  const n = dates.length;
+  if (range === 'all' || n <= 2) return 0;
+  if (range === '1D') return Math.max(0, n - 2);            // last 2 price points
+  const days = { '1W': 7, '2W': 14, '1M': 30 }[range];
+  if (!days) return 0;
+  const cutoff = new Date(dates[n - 1] + 'T12:00:00');
+  cutoff.setDate(cutoff.getDate() - days);
+  for (let i = 0; i < n; i++) if (new Date(dates[i] + 'T12:00:00') >= cutoff) return i;
+  return n - 1;
+}
+function styleTrendsRangeButtons() {
+  document.querySelectorAll('.trange-btn').forEach(b => {
+    const on = b.dataset.trange === trendsRange;
+    b.className = 'trange-btn px-2 py-0.5 text-xs rounded font-medium ' +
+      (on ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100');
+  });
+}
 function renderTrends() {
   const canvas = get('trends-chart');
   if (!canvas) return;
@@ -1114,6 +1140,9 @@ function renderTrends() {
     return;
   }
 
+  const startIdx = trendsWindowStart(allDates, trendsRange);
+  const dates = allDates.slice(startIdx);
+
   const datasets = apts.map((apt, i) => {
     const col = CHART_COLORS[i % CHART_COLORS.length];
     const label = apt.name.replace(' Apartments','').replace(' Apartment Homes','');
@@ -1127,7 +1156,7 @@ function renderTrends() {
         const byDate = {};
         apt.price_history.forEach(h => { byDate[h.date] = h.rent; }); // last value wins per date
         let last = null;
-        return allDates.map(d => { if (byDate[d] != null) last = byDate[d]; return last; });
+        return allDates.map(d => { if (byDate[d] != null) last = byDate[d]; return last; }).slice(startIdx);
       })(),
       borderColor: col,
       backgroundColor: col + '20',
@@ -1144,7 +1173,7 @@ function renderTrends() {
     label: `Budget ($${MAX_RENT.toLocaleString()})`,
     _fullName: '__budget__',
     _color: '#ef4444',
-    data: allDates.map(() => MAX_RENT),
+    data: dates.map(() => MAX_RENT),
     borderColor: '#ef4444',
     borderWidth: 1.5,
     borderDash: [6, 4],
@@ -1157,7 +1186,7 @@ function renderTrends() {
   if (trendsChart) trendsChart.destroy();
   trendsChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: { labels: allDates, datasets },
+    data: { labels: dates, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -1189,6 +1218,7 @@ function renderTrends() {
     }
   });
   trendsChart.update('none');
+  styleTrendsRangeButtons();
 
   // Build checkbox list (show all apartments, not just those with price history)
   buildAptCheckboxList(allApts, datasets);
