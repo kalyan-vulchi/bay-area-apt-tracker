@@ -1742,7 +1742,7 @@ const SHORTLIST = [
 
   { name:'Elan at River Oaks', address:'345 Village Center Drive, San Jose, CA 95134',
     url:'https://www.sheaapartments.com/apartments/elan-at-river-oaks/#apartments', lat:37.4003398, lng:-121.9245178,
-    rent:3157, sqft:540, available:'2026-06-11', commute:21, commute_off:13, dist_mi:8.1, has_wd:true, has_ac:true, ac_type:'central', has_parking:true, has_hardwood:true,
+    rent:3326, sqft:540, available:'2026-06-11', commute:21, commute_off:13, dist_mi:8.1, has_wd:true, has_ac:true, ac_type:'central', has_parking:true, has_hardwood:true,
     status:'toured', impression:9,
     promo:'Up to 2 Weeks Free on select floor plans',
     plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
@@ -1774,7 +1774,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 21; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 22; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
