@@ -449,13 +449,13 @@ function score(apt) {
   // Has AC but type not yet confirmed -> 8 (conservative until verified on tour).
   const AC_PTS = { central: 15, split_both: 12, split_living: 10, window: 8 };
   if (apt.has_ac)      pts += (AC_PTS[apt.ac_type] ?? 8);
-  if (apt.rent && apt.rent <= MAX_RENT) pts += 15;
+  // Rent: graduated 20 (cheap) sliding to 10 at the $3,350 soft-cap, then a hard cliff to 0 above it.
+  if (apt.rent && apt.rent <= 3350) pts += Math.max(10, Math.min(20, Math.round(20 - (apt.rent - 2700) / 65)));
   // Commute scored on a graduated ramp by PEAK time (worst of AM/PM): <=10 min = 15 pts,
   // sliding down ~0.6/min to 0 at 30 min. Unknown commute -> 7.
   if (!apt.commute) pts += 7;
   else if (apt.commute <= MAX_COMMUTE) pts += Math.max(0, Math.min(15, Math.round(15 - (apt.commute - 10) * 0.6)));
   if (apt.has_hardwood) pts += 10;
-  if (apt.rent && apt.rent <= MAX_RENT) pts += Math.min(5, Math.floor((MAX_RENT - apt.rent) / 100));
   // Tour impression of community/apt (0-10), only earned once toured. Brings the scale to a true 100.
   if (apt.impression) pts += Math.max(0, Math.min(10, apt.impression));
   return { qualifies, missingReq, missingPref, pts: Math.min(100, pts) };
