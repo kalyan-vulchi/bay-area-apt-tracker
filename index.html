@@ -636,12 +636,23 @@ function acBadge(apt) {
 // True when the user's notes flag a paid-parking caveat (assigned/guest/extra parking costs).
 function parkingHasNote(apt) {
   const n = (apt.notes || '').toLowerCase();
-  return /paid parking/.test(n)
+  const mentionsFee = /paid parking/.test(n)
     || /parking[^.]{0,45}\$\d/.test(n)
     || /\$\d[\d,]*\s*\/\s*mo[^.]{0,30}park/.test(n)
     || /(guest|extra) (parking|pass|day pass)[^.]{0,30}\$/.test(n)
     || /reserved garage[^.]{0,20}\$/.test(n)
     || /parking[^.]{0,30}(not included|required)\b/.test(n);
+  if (!mentionsFee) return false;
+  // Don't flag when the first/assigned spot is free/included and the fee applies
+  // only to an extra/additional/second space — that isn't a cost you must bear for
+  // one car (e.g. Villas "1 assigned parking included. Extra parking $125/mo").
+  const firstSpotFree = /(assigned|reserved|1st|first|1 )[^.]{0,25}(free|included)/.test(n)
+    || /\b(free|included)\b[^.]{0,20}(assigned|parking|spot|space)/.test(n)
+    || /parking (space )?included/.test(n)
+    || /(additional|extra|second|2nd)\s+(car|space|spot|parking)/.test(n);
+  const definitelyPaid = /paid parking/.test(n) || /not included/.test(n)
+    || /mandatory/.test(n) || /parking[^.]{0,30}required/.test(n) || /will become paid/.test(n);
+  return !(firstSpotFree && !definitelyPaid);
 }
 
 // Parking cost pulled from the notes, e.g. " $95/mo" or " $10–40/mo". Empty if no $ figure.
