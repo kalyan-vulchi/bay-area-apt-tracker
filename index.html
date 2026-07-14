@@ -195,9 +195,13 @@
           <div id="apt-checkbox-list" class="overflow-y-auto" style="max-height:220px"></div>
         </div>
       </div>
+      <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+        <input type="checkbox" id="chk-avg-line" checked onchange="toggleTrendAvg(this.checked)" class="w-3.5 h-3.5" style="accent-color:#0f172a">
+        Average line
+      </label>
       <span id="trends-count" class="text-xs text-gray-400"></span>
     </div>
-    <div style="flex:1;min-height:0;position:relative">
+    <div style="height:min(52vh,440px);min-height:280px;position:relative">
       <canvas id="trends-chart"></canvas>
       <div class="absolute bottom-2 right-2 flex gap-0.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg p-0.5 shadow-sm">
         <button data-trange="1D" onclick="setTrendsRange('1D')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium" title="Last 2 prices">1D</button>
@@ -205,6 +209,24 @@
         <button data-trange="2W" onclick="setTrendsRange('2W')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">2W</button>
         <button data-trange="1M" onclick="setTrendsRange('1M')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">1M</button>
         <button data-trange="all" onclick="setTrendsRange('all')" class="trange-btn px-2 py-0.5 text-xs rounded font-medium">All</button>
+      </div>
+    </div>
+
+    <!-- Average rent by group (city / condition / status / AC) -->
+    <div class="flex flex-col gap-2 pt-3 border-t border-gray-100">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="text-sm font-semibold text-gray-700 mr-1">Average rent by</div>
+        <select id="avg-group-by" onchange="renderAvgByGroup()"
+          class="px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400">
+          <option value="city">City</option>
+          <option value="condition">Condition (qualify / near-miss / over-budget)</option>
+          <option value="status">Tour status</option>
+          <option value="ac">AC type</option>
+        </select>
+        <span id="avg-group-note" class="text-xs text-gray-400"></span>
+      </div>
+      <div style="height:min(42vh,340px);min-height:220px;position:relative">
+        <canvas id="avg-group-chart"></canvas>
       </div>
     </div>
   </div>
@@ -399,6 +421,7 @@ let activeTab = 'shortlist';
 let currentFilteredList = null; // null = no filter applied yet; array = active filter result
 let selectedAptId = null;
 let trendsChart = null, trendsRange = 'all';
+let avgGroupChart = null, showTrendAvg = true;
 let hiddenAptNames = new Set();
 
 const CHART_COLORS = [
@@ -1143,6 +1166,7 @@ function renderTrends() {
     ctx.fillText('No price history yet.', canvas.width / 2, 80);
     get('apt-checkbox-list').innerHTML = '';
     set('trends-count', '');
+    renderAvgByGroup();
     return;
   }
 
@@ -1174,6 +1198,29 @@ function renderTrends() {
       fill: false
     };
   });
+
+  // Average price over time across the shown apartments (forward-filled), tracks the current filter.
+  if (showTrendAvg && datasets.length) {
+    const avgData = dates.map((_, idx) => {
+      const vals = datasets.map(d => d.data[idx]).filter(v => v != null);
+      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+    });
+    datasets.push({
+      label: 'Average',
+      _fullName: '__average__',
+      _color: '#0f172a',
+      data: avgData,
+      borderColor: '#0f172a',
+      backgroundColor: '#0f172a22',
+      borderWidth: 3,
+      pointRadius: 3,
+      pointHoverRadius: 7,
+      tension: 0.15,
+      spanGaps: true,
+      fill: false,
+      order: -2
+    });
+  }
 
   datasets.push({
     label: `Budget ($${MAX_RENT.toLocaleString()})`,
@@ -1229,6 +1276,71 @@ function renderTrends() {
   // Build checkbox list (show all apartments, not just those with price history)
   buildAptCheckboxList(allApts, datasets);
   updateAptFilterLabel(apts.length);
+  renderAvgByGroup();
+}
+
+function toggleTrendAvg(on) { showTrendAvg = on; renderTrends(); }
+
+// One bucket per apartment for the "average rent by ___" breakdown.
+function conditionOf(a) {
+  if (score(a).qualifies)                return 'Qualifies';
+  if (isNearMiss(a))                     return 'Near miss';
+  if (a.rent && a.rent > MAX_RENT)       return 'Over budget';
+  return 'Other misses';
+}
+function acGroupOf(a) {
+  if (a.has_ac === false) return 'No AC';
+  if (a.has_ac === null)  return 'AC unknown';
+  return acType(a); // Central AC / Split AC / Window AC / AC
+}
+
+// Grouped bar chart: current average asking rent per group, honoring the active filter/tab.
+function renderAvgByGroup() {
+  const canvas = get('avg-group-chart');
+  if (!canvas) return;
+  const dim = get('avg-group-by')?.value || 'city';
+  const source = currentFilteredList !== null ? currentFilteredList : apartments.filter(a => a.list === activeTab);
+  const apts = source.filter(a => a.rent);
+
+  const keyFn = dim === 'city'      ? (a => cityOf(a) || 'Unknown')
+              : dim === 'condition' ? conditionOf
+              : dim === 'status'    ? (a => a.status === 'toured' ? 'Toured' : 'Not toured')
+              :                       acGroupOf;
+
+  const groups = {};
+  apts.forEach(a => { const k = keyFn(a); (groups[k] = groups[k] || []).push(a.rent); });
+  const rows = Object.entries(groups)
+    .map(([k, arr]) => ({ k, avg: Math.round(arr.reduce((s, v) => s + v, 0) / arr.length), n: arr.length }))
+    .sort((x, y) => y.avg - x.avg);
+
+  const labels = rows.map(r => `${r.k} (${r.n})`);
+  const data   = rows.map(r => r.avg);
+  // Green within budget, amber near-miss (≤$200 over), red clearly over.
+  const colors = rows.map(r => r.avg <= MAX_RENT ? '#22c55e' : r.avg <= MAX_RENT + 200 ? '#f59e0b' : '#ef4444');
+
+  if (avgGroupChart) avgGroupChart.destroy();
+  avgGroupChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Average rent', data, backgroundColor: colors, borderRadius: 4, maxBarThickness: 34 }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { min: 2200, ticks: { callback: v => '$' + v.toLocaleString(), font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` $${ctx.parsed.x.toLocaleString()}/mo avg` } }
+      }
+    }
+  });
+
+  const overall = apts.length ? Math.round(apts.reduce((s, a) => s + a.rent, 0) / apts.length) : 0;
+  set('avg-group-note', apts.length
+    ? `${apts.length} priced · overall avg $${overall.toLocaleString()} · green ≤ $${MAX_RENT.toLocaleString()}`
+    : 'No priced listings in view');
 }
 
 function buildAptCheckboxList(apts, datasets) {
@@ -1261,14 +1373,14 @@ function toggleAptLine(fullName, visible) {
   if (!trendsChart) return;
   const idx = trendsChart.data.datasets.findIndex(d => d._fullName === fullName);
   if (idx >= 0) { trendsChart.getDatasetMeta(idx).hidden = !visible; trendsChart.update(); }
-  const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__').length;
+  const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__' && d._fullName !== '__average__').length;
   updateAptFilterLabel(total);
 }
 
 function trendsSelectAll(show) {
   if (!trendsChart) return;
   trendsChart.data.datasets.forEach((ds, i) => {
-    if (ds._fullName === '__budget__') return;
+    if (ds._fullName === '__budget__' || ds._fullName === '__average__') return;
     trendsChart.getDatasetMeta(i).hidden = !show;
     if (show) hiddenAptNames.delete(ds._fullName);
     else hiddenAptNames.add(ds._fullName);
@@ -1276,7 +1388,7 @@ function trendsSelectAll(show) {
   trendsChart.update();
   // Sync checkboxes
   get('apt-checkbox-list')?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = show);
-  const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__').length;
+  const total = trendsChart.data.datasets.filter(d => d._fullName !== '__budget__' && d._fullName !== '__average__').length;
   updateAptFilterLabel(total);
 }
 
