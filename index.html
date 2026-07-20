@@ -1813,7 +1813,7 @@ const SHORTLIST = [
     notes:'TOURED Jul 17 3:30PM — good layout overall. In-unit W/D confirmed (small washroom). Split AC in living room. Hardwood floors ENTIRE unit. Good balcony space, good bedroom closet + extra closet outside bedroom. Little low ceilings. Assigned COVERED (roofed) parking + guest parking available; underground parking garage for the 3-floor buildings (unit 1205). NO elevator. Internet: Xfinity only. Nice club room, small 24/7 gym. Jacuzzi available but pool is NOT heated. Farmers market next door on Saturdays. An August-end unit has a pool view. PROMO: 2 weeks free right now. Prometheus. Santa Clara.' },
 
   { name:'The Brookdale Apartment Homes', address:'4400 Albany Dr, San Jose, CA 95129',
-    url:'https://www.brookdale-apartments.com/', lat:37.320816, lng:-121.981031,
+    url:'https://www.brookdale-apartments.com/apartments/ca/san-jose/floor-plans#/?beds=1', lat:37.320816, lng:-121.981031,
     rent:3395, sqft:null, available:null, commute:28, commute_off:16, dist_mi:7.9, has_wd:false, has_ac:true, ac_type:'window', has_parking:true, has_hardwood:true,
     status:'toured', impression:5,
     notes:'TOURED Jul 17 4:30PM — average community, small (~100 units). FAILS in-unit W/D: shared laundry only (5 laundry rooms, 6AM-10PM); official site claims W/D in SELECT floor plans — verify which. Window AC in living room. Hardwood floors. Small kitchen, small bathroom, good closet space; big balcony / gardening area on 1st-floor units. NO PETS. Parking: 1 assigned spot + storage per unit (included); guest parking (unmarked spots); 6 EV spots; lots of street parking. Heated pool + jacuzzi; sauna 8-10PM; small gym 8-10PM + outdoor cardio bikes. ACCO Management. Commute 21 min peak (TomTom, Thu 9am arrival), 16 min free-flow. No price on official site — verify. West San Jose.' },
@@ -1923,7 +1923,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 41; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 42; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
