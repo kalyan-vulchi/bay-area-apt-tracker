@@ -410,6 +410,11 @@ const HOME_ADDRESS = '151 Buckingham Dr, Santa Clara, CA 95051';
 const HOME = { lat: 37.3248008, lng: -121.971778 };
 const MAX_RENT = 3300;
 const MAX_COMMUTE = 30;
+// Total monthly price basis = base rent + required parking fee for the first spot
+// (0 when the first/assigned spot is free/included). Sort, filters, budget, and
+// scoring all run on totalRent(); base rent is still what the trend graph tracks.
+function parkingFee(a){ return a.parking_fee || 0; }
+function totalRent(a){ return a.rent == null ? null : a.rent + parkingFee(a); }
 
 // ═══════════════════════════════════
 // STATE
@@ -462,9 +467,10 @@ function score(apt) {
   // Parking is no longer a hard requirement — most communities include at least one
   // assigned space. Paid-parking caveats surface as a tag from the notes instead.
   const missingReq = [], missingPref = [];
+  const rentTot = totalRent(apt); // base rent + required parking
   if (!apt.has_wd)                              missingReq.push('In-unit W/D');
   if (!apt.has_ac)                              missingReq.push('AC');
-  if (apt.rent && apt.rent > MAX_RENT)          missingReq.push('Over budget ($' + apt.rent.toLocaleString() + ')');
+  if (rentTot && rentTot > MAX_RENT)            missingReq.push('Over budget ($' + rentTot.toLocaleString() + ')');
   if (apt.commute && apt.commute > MAX_COMMUTE) missingReq.push(apt.commute + ' min commute');
   if (!apt.has_hardwood)                        missingPref.push('Hardwood');
   const qualifies = missingReq.length === 0;
@@ -475,7 +481,7 @@ function score(apt) {
   const AC_PTS = { central: 15, split_both: 12, split_living: 10, window: 8 };
   if (apt.has_ac)      pts += (AC_PTS[apt.ac_type] ?? 8);
   // Rent: graduated 20 (cheap) sliding to 10 at the $3,350 soft-cap, then a hard cliff to 0 above it.
-  if (apt.rent && apt.rent <= 3350) pts += Math.max(10, Math.min(20, Math.round(20 - (apt.rent - 2700) / 65)));
+  if (rentTot && rentTot <= 3350) pts += Math.max(10, Math.min(20, Math.round(20 - (rentTot - 2700) / 65)));
   // Commute scored on a graduated ramp by PEAK time (worst of AM/PM): <=10 min = 15 pts,
   // sliding down ~0.6/min to 0 at 30 min. Unknown commute -> 7.
   if (!apt.commute) pts += 7;
@@ -577,13 +583,13 @@ function applyFilters() {
     const commuteOk = !a.commute || a.commute <= MAX_COMMUTE;
     if (cr === 'qualifies'           && !s.qualifies) return false;
     if (cr === 'missing_dealbreaker' && a.has_wd && a.has_ac) return false;
-    if (cr === 'under_budget'        && (!a.rent || a.rent > MAX_RENT)) return false;
-    if (cr === 'over_budget'         && (!a.rent || a.rent <= MAX_RENT)) return false;
+    if (cr === 'under_budget'        && (!totalRent(a) || totalRent(a) > MAX_RENT)) return false;
+    if (cr === 'over_budget'         && (!totalRent(a) || totalRent(a) <= MAX_RENT)) return false;
     if (cr === 'commute_ok'          && !commuteOk) return false;
     if (cr === 'has_promo'           && !a.promo) return false;
     if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
     if (cr === 'near_miss'           && !isNearMiss(a)) return false;
-    if (cr === 'needs_verify'        && !(a.status !== 'toured' && a.rent && a.rent <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null))) return false;
+    if (cr === 'needs_verify'        && !(a.status !== 'toured' && totalRent(a) && totalRent(a) <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null))) return false;
     if (cr === 'scrapable'           && a.scrapable !== true) return false;
     if (cr === 'not_scrapable'       && a.scrapable === true) return false;
     return true;
@@ -593,8 +599,8 @@ function applyFilters() {
     const sa = score(a), sb = score(b);
     switch (srt) {
       case 'score_desc':  return sb.pts - sa.pts;
-      case 'rent_asc':    return (a.rent || 9999) - (b.rent || 9999);
-      case 'rent_desc':   return (b.rent || 0) - (a.rent || 0);
+      case 'rent_asc':    return (totalRent(a) ?? 9999) - (totalRent(b) ?? 9999);
+      case 'rent_desc':   return (totalRent(b) || 0) - (totalRent(a) || 0);
       case 'commute_asc': return (a.commute || 999) - (b.commute || 999);
       case 'avail_asc':   return (a.available ? new Date(a.available) : new Date('2099-01-01')) - (b.available ? new Date(b.available) : new Date('2099-01-01'));
       case 'date_desc':   return new Date(b.added) - new Date(a.added);
@@ -703,12 +709,12 @@ function card(apt) {
                  (!apt.has_wd || !apt.has_ac) ? 'missing-req' : 'missing-pref';
 
   const rentClr = !apt.rent ? 'text-gray-400' :
-                  apt.rent <= MAX_RENT ? 'text-green-700' : 'text-red-600';
+                  totalRent(apt) <= MAX_RENT ? 'text-green-700' : 'text-red-600';
   const comClr  = !apt.commute ? 'text-gray-400' :
                   apt.commute <= MAX_COMMUTE ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
   const scoreClr = s.pts >= 80 ? 'bg-green-100 text-green-700' :
                    s.pts >= 55 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600';
-  const total = (apt.rent || 0) + (apt.utilities || 0);
+  const total = (apt.rent || 0) + (apt.utilities || 0) + parkingFee(apt);
 
   const now = new Date();
   const availDate = apt.available ? new Date(apt.available + 'T12:00:00') : null;
@@ -784,7 +790,8 @@ function card(apt) {
         <p class="text-xs text-gray-400 truncate mt-0.5">${esc(apt.address)}</p>
       </div>
       <div class="text-right flex-shrink-0 ml-2">
-        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + apt.rent.toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
+        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + totalRent(apt).toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
+        ${apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
         <div class="text-xs text-gray-500 font-medium mt-0.5">1BR &middot; 1BA${apt.sqft ? ' &middot; ' + apt.sqft + ' sqft' : ''}</div>
         ${apt.available ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border font-medium ${availBadgeClr}">${availLabel}</div>` : ''}
         ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
@@ -883,7 +890,7 @@ function renderMapMarkers() {
     ? currentFilteredList.filter(a => a.lat && a.lng)
     : apartments.filter(a => a.list === activeTab && a.lat && a.lng);
   source.forEach(apt => {
-    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${apt.rent<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? apt.rent.toLocaleString() : '—'}/mo</span> &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
+    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${totalRent(apt)<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? totalRent(apt).toLocaleString() : '—'}/mo</span>${apt.rent&&parkingFee(apt)?` <span style="font-size:10px;color:#9ca3af">(incl. $${parkingFee(apt)} pkg)</span>`:''} &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
     mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon: makeMarkerIcon(apt, apt.id === selectedAptId) })
       .addTo(mapInst).bindPopup(popup);
   });
@@ -1285,7 +1292,7 @@ function toggleTrendAvg(on) { showTrendAvg = on; renderTrends(); }
 function conditionOf(a) {
   if (score(a).qualifies)                return 'Qualifies';
   if (isNearMiss(a))                     return 'Near miss';
-  if (a.rent && a.rent > MAX_RENT)       return 'Over budget';
+  if (totalRent(a) && totalRent(a) > MAX_RENT) return 'Over budget';
   return 'Other misses';
 }
 function acGroupOf(a) {
@@ -1308,7 +1315,7 @@ function renderAvgByGroup() {
               :                       acGroupOf;
 
   const groups = {};
-  apts.forEach(a => { const k = keyFn(a); (groups[k] = groups[k] || []).push(a.rent); });
+  apts.forEach(a => { const k = keyFn(a); (groups[k] = groups[k] || []).push(totalRent(a)); });
   const rows = Object.entries(groups)
     .map(([k, arr]) => ({ k, avg: Math.round(arr.reduce((s, v) => s + v, 0) / arr.length), n: arr.length }))
     .sort((x, y) => y.avg - x.avg);
@@ -1337,9 +1344,9 @@ function renderAvgByGroup() {
     }
   });
 
-  const overall = apts.length ? Math.round(apts.reduce((s, a) => s + a.rent, 0) / apts.length) : 0;
+  const overall = apts.length ? Math.round(apts.reduce((s, a) => s + totalRent(a), 0) / apts.length) : 0;
   set('avg-group-note', apts.length
-    ? `${apts.length} priced · overall avg $${overall.toLocaleString()} · green ≤ $${MAX_RENT.toLocaleString()}`
+    ? `${apts.length} priced (rent+parking) · overall avg $${overall.toLocaleString()} · green ≤ $${MAX_RENT.toLocaleString()}`
     : 'No priced listings in view');
 }
 
@@ -1397,10 +1404,11 @@ function renderSummary() {
 
   // Calculate metrics
   const total = apts.length;
-  const withBudget = apts.filter(a => a.rent && a.rent <= MAX_RENT).length;
+  const withBudget = apts.filter(a => totalRent(a) && totalRent(a) <= MAX_RENT).length;
   const qualifies = apts.filter(a => score(a).qualifies).length;
-  const avgRent = apts.filter(a => a.rent).length > 0
-    ? Math.round(apts.filter(a => a.rent).reduce((s,a) => s + a.rent, 0) / apts.filter(a => a.rent).length)
+  const priced = apts.filter(a => a.rent);
+  const avgRent = priced.length > 0
+    ? Math.round(priced.reduce((s,a) => s + totalRent(a), 0) / priced.length)
     : 0;
 
   // 7-day trend
@@ -1421,7 +1429,7 @@ function renderSummary() {
   const trendMsg = `${upCount} up, ${downCount} down`;
 
   // Price range
-  const rents = apts.filter(a => a.rent).map(a => a.rent).sort((a,b) => a-b);
+  const rents = apts.filter(a => a.rent).map(a => totalRent(a)).sort((a,b) => a-b);
   const minRent = rents.length > 0 ? rents[0] : 0;
   const maxRent = rents.length > 0 ? rents[rents.length-1] : 0;
   const spread = maxRent - minRent;
@@ -1438,18 +1446,18 @@ function renderSummary() {
   const fmtRent = r => r ? `$${r.toLocaleString()}` : 'call for price';
   const qual = apts.map(a => ({a, s: score(a)})).filter(x => x.s.qualifies);
   // Best overall match (highest score across everything)
-  const best = apts.map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (x.a.rent||9e9) - (y.a.rent||9e9))[0];
-  if (best) notableParts.push(`<p>🎯 Best match: <strong>${best.a.name}</strong> — ${fmtRent(best.a.rent)}${best.a.commute ? ` · ${best.a.commute} min` : ''} · ${best.s.pts}/100${best.s.qualifies ? '' : ` <span class="text-amber-600">(misses ${best.s.missingReq.length})</span>`}</p>`);
+  const best = apts.map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
+  if (best) notableParts.push(`<p>🎯 Best match: <strong>${best.a.name}</strong> — ${fmtRent(totalRent(best.a))}${best.a.commute ? ` · ${best.a.commute} min` : ''} · ${best.s.pts}/100${best.s.qualifies ? '' : ` <span class="text-amber-600">(misses ${best.s.missingReq.length})</span>`}</p>`);
   // Cheapest that meets ALL must-haves
-  const cheapQual = [...qual].sort((x,y) => (x.a.rent||9e9) - (y.a.rent||9e9))[0];
-  if (cheapQual) notableParts.push(`<p>💰 Cheapest that meets all musts: <strong>${cheapQual.a.name}</strong> — ${fmtRent(cheapQual.a.rent)}</p>`);
+  const cheapQual = [...qual].sort((x,y) => (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
+  if (cheapQual) notableParts.push(`<p>💰 Cheapest that meets all musts: <strong>${cheapQual.a.name}</strong> — ${fmtRent(totalRent(cheapQual.a))}</p>`);
   // Fastest commute that meets ALL must-haves
   const fastQual = qual.filter(x => x.a.commute).sort((x,y) => x.a.commute - y.a.commute)[0];
-  if (fastQual && fastQual.a.name !== cheapQual?.a.name) notableParts.push(`<p>⚡ Fastest commute that qualifies: <strong>${fastQual.a.name}</strong> — ${fastQual.a.commute} min · ${fmtRent(fastQual.a.rent)}</p>`);
+  if (fastQual && fastQual.a.name !== cheapQual?.a.name) notableParts.push(`<p>⚡ Fastest commute that qualifies: <strong>${fastQual.a.name}</strong> — ${fastQual.a.commute} min · ${fmtRent(totalRent(fastQual.a))}</p>`);
   // Best apartment you've actually toured
   const bestToured = apts.filter(a => a.status === 'toured').map(a => ({a, s: score(a)}))
-    .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (x.a.rent||9e9) - (y.a.rent||9e9))[0];
-  if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(bestToured.a.rent)}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
+    .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
+  if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(totalRent(bestToured.a))}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
   if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
 
   // Market insights — biggest movers + best value (data-driven, refreshes every render)
@@ -1480,20 +1488,20 @@ function renderSummary() {
   // Near-misses — apartments that fail on exactly ONE confirmed thing (negotiable / compromise candidates)
   const commuteOk = a => !a.commute || a.commute <= MAX_COMMUTE;
   const names = arr => arr.map(a => a.name).join(', ');
-  const noAc = apts.filter(a => a.has_wd===true && a.rent && a.rent<=MAX_RENT && commuteOk(a) && a.has_ac===false);
+  const noAc = apts.filter(a => a.has_wd===true && totalRent(a) && totalRent(a)<=MAX_RENT && commuteOk(a) && a.has_ac===false);
   if (noAc.length) insights.push(`<p>❄️ Meets everything but no AC (${noAc.length}): <strong>${names(noAc)}</strong> — portable AC (~$40/mo) could close the gap.</p>`);
-  const overBudgetClose = apts.filter(a => a.has_wd===true && a.has_ac===true && commuteOk(a) && a.rent && a.rent>MAX_RENT && a.rent<=MAX_RENT+150);
-  if (overBudgetClose.length) insights.push(`<p>💵 Qualifies but ≤$150 over budget (${overBudgetClose.length}): <strong>${overBudgetClose.map(a=>`${a.name} (+$${(a.rent-MAX_RENT).toLocaleString()})`).join(', ')}</strong> — a promo or negotiation could bring it in range.</p>`);
+  const overBudgetClose = apts.filter(a => a.has_wd===true && a.has_ac===true && commuteOk(a) && totalRent(a) && totalRent(a)>MAX_RENT && totalRent(a)<=MAX_RENT+150);
+  if (overBudgetClose.length) insights.push(`<p>💵 Qualifies but ≤$150 over budget (${overBudgetClose.length}): <strong>${overBudgetClose.map(a=>`${a.name} (+$${(totalRent(a)-MAX_RENT).toLocaleString()})`).join(', ')}</strong> — a promo or negotiation could bring it in range.</p>`);
   // Paid-parking caveats (informational — parking isn't a hard requirement, just a cost note)
   const paidParking = apts.filter(a => parkingHasNote(a));
   if (paidParking.length) insights.push(`<p>💲 Paid parking to factor in (${paidParking.length}): <strong>${paidParking.map(a => { const c = parkingCostLabel(a).trim(); return c ? `${a.name} (${c})` : a.name; }).join(', ')}</strong> — see notes for details.</p>`);
 
   // Promos that effectively cut rent (count only — actionable ones already named in near-miss lines)
-  const promos = apts.filter(a => a.promo && a.rent && a.rent<=MAX_RENT+200);
+  const promos = apts.filter(a => a.promo && totalRent(a) && totalRent(a)<=MAX_RENT+200);
   if (promos.length) insights.push(`<p>🏷️ ${promos.length} near-budget listing${promos.length>1?'s have':' has'} an active promo (free weeks effectively cut rent — check the listing cards).</p>`);
 
   // Verification backlog — unverified must-haves blocking a yes/no
-  const needVerify = apts.filter(a => a.status!=='toured' && a.rent && a.rent<=MAX_RENT && commuteOk(a) && (a.has_wd===null || a.has_ac===null));
+  const needVerify = apts.filter(a => a.status!=='toured' && totalRent(a) && totalRent(a)<=MAX_RENT && commuteOk(a) && (a.has_wd===null || a.has_ac===null));
   if (needVerify.length) insights.push(`<p>📞 In-budget but amenities unconfirmed (${needVerify.length}): <strong>${names(needVerify)}</strong> — call to verify W/D and AC.</p>`);
 
   // Upcoming tours — anything marked scheduled (dates live in notes)
@@ -1558,15 +1566,16 @@ function updateAmenityChips() {
 // Near miss = exactly ONE confirmed hard fail; every other must-have confirmed satisfied (so it's genuinely one thing away)
 function isNearMiss(a) {
   const fails = [];
+  const t = totalRent(a);
   if (a.has_wd === false)                          fails.push('wd');
   if (a.has_ac === false)                          fails.push('ac');
-  if (a.rent && a.rent > MAX_RENT && a.rent <= MAX_RENT + 200) fails.push('budget');
+  if (t && t > MAX_RENT && t <= MAX_RENT + 200)    fails.push('budget');
   if (a.commute && a.commute > MAX_COMMUTE)        fails.push('commute');
   if (fails.length !== 1) return false;
   // The non-failing must-haves must be confirmed (not null/unknown)
   if (!fails.includes('wd')      && a.has_wd      !== true) return false;
   if (!fails.includes('ac')      && a.has_ac      !== true) return false;
-  if (!fails.includes('budget')  && (!a.rent || a.rent > MAX_RENT)) return false;
+  if (!fails.includes('budget')  && (!t || t > MAX_RENT)) return false;
   if (!fails.includes('commute') && a.commute && a.commute > MAX_COMMUTE) return false;
   return true;
 }
@@ -1680,7 +1689,7 @@ const SHORTLIST = [
 
   { name:'City Gate at Cupertino', address:'5608 Stevens Creek Blvd, Cupertino, CA 95014',
     url:'https://www.equityapartments.com/san-francisco-bay/cupertino/city-gate-at-cupertino-apartments##bedroom-type-section-1', lat:37.3225492, lng:-122.0018172,
-    rent:3416, sqft:728, available:'2026-06-30', commute:27, commute_off:15, dist_mi:11.7, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true,
+    rent:3416, sqft:728, available:'2026-06-30', commute:27, commute_off:15, dist_mi:11.7, parking_fee:50, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true,
     status:'toured', impression:7,
     plans:[{label:'1 Bed A',sqft:728,rent:3253,available:'2026-07-17'},{label:'1 Bed A',sqft:728,rent:3256,available:'2026-06-30'},{label:'1 Bed B',sqft:739,rent:3253,available:'2026-07-17'},{label:'1 Bed B',sqft:739,rent:3287,available:'2026-07-03'}],
     notes:'TOURED Jun 11 (self tour) — good apartment, great layout (730 sqft). Average common spaces/outdoor amenities. Window AC in living room only, NO AC in bedroom; heater available. Medium-sized closet. In-unit W/D. Great kitchen. Hardwood floors. Underground parking $50/mo MANDATORY. No guest parking onsite. More units opening up soon. 1BR from $3,253 (728-739 sqft), late June/July. Equity Apartments. Cupertino.' },
@@ -1728,7 +1737,7 @@ const SHORTLIST = [
 
   { name:'Domicilio', address:'431 El Camino Real, Santa Clara, CA 95050',
     url:'https://www.domicilioapts.com/floorplans?Beds=1&oll_Beds=1', lat:37.3471848, lng:-121.933128,
-    rent:3434, sqft:871, available:'2026-06-25', commute:28, commute_off:16, dist_mi:12.0, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:true, scrapable:false,
+    rent:3434, sqft:871, available:'2026-06-25', commute:28, commute_off:16, dist_mi:12.0, parking_fee:50, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:true, scrapable:false,
     promo:'2 Weeks Free — move in by Jun 30',
     plans:[{label:'Ponti',sqft:871,rent:3298,available:null},{label:'Ponti 1214',sqft:900,rent:3439,available:'2026-06-01'},{label:'Ponti 1302',sqft:900,rent:3444,available:'2026-06-25'}],
     status:'toured', impression:6,
@@ -1736,7 +1745,7 @@ const SHORTLIST = [
 
   { name:'River Terrace', address:'730 Agnew Rd, Santa Clara, CA 95054',
     url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/apartments-pricing/#/?sort=rent&sortdir=asc&beds=1', lat:37.3942417, lng:-121.9488377,
-    rent:3215, sqft:null, available:'2026-06-09', commute:19, commute_off:11, dist_mi:6.7, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false, scrapable:true,
+    rent:3215, sqft:null, available:'2026-06-09', commute:19, commute_off:11, dist_mi:6.7, parking_fee:95, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false, scrapable:true,
     status:'toured', impression:6,
     notes:'TOURED Jun 3 — unit 213 is the only good option (slight road noise). Central AC + in-unit W/D confirmed. Good kitchen design. VERIFY: is unit 213 renovated? Ask leasing for specific amenities/finishes on 213. PAID PARKING (required): reserved garage $95/mo, additional space $90/mo, premium $105/mo. Walk-in closets, patio/balcony, granite countertops. No current availability — sign up for alerts. Reviews: UDR charges heavily on move-out, parking/locker fees extra, occasional marijuana smell weekends, theft reported, maintenance concerns. UDR.' },
 
@@ -1756,14 +1765,14 @@ const SHORTLIST = [
 
   { name:'Estancia at Santa Clara', address:'1650 Hope Drive, Santa Clara, CA 95054',
     url:'https://www.equityapartments.com/san-francisco-bay/santa-clara/estancia-at-santa-clara-apartments##bedroom-type-section-1', lat:37.3992024, lng:-121.9564515,
-    rent:3539, sqft:790, available:'2026-06-05', commute:16, commute_off:9, dist_mi:7.1, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false,
+    rent:3539, sqft:790, available:'2026-06-05', commute:16, commute_off:9, dist_mi:7.1, parking_fee:25, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false,
     status:'toured', impression:6,
     plans:[{label:'1 Bed A',sqft:790,rent:2922,available:'2026-06-05'}],
     notes:'TOURED Jun 11 (self tour) — units 07-0717 & 14-1423. Good common areas, good pool, good gym. Average interior for the price. 3rd-floor units have carpet. Small fridge. Central AC + in-unit W/D confirmed. Parking $25/mo minimum. Some guest parking in front of leasing office + on main road. Equity Apartments.' },
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
-    rent:3348, sqft:580, available:'2026-08-29', commute:7, commute_off:7, dist_mi:2.7, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true, scrapable:true,
+    rent:3348, sqft:580, available:'2026-08-29', commute:7, commute_off:7, dist_mi:2.7, parking_fee:10, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true, scrapable:true,
     status:'toured', impression:8,
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. AC: portable unit +$40/mo for summer (central heater built-in, no central A/C). W/D: in-unit in Santa Barbara floorplan; Sonoma uses shared laundry per building. Walk-in closet. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
@@ -1916,7 +1925,7 @@ const CORPUS_LIST = [
 // IMPORT
 // ═══════════════════════════════════
 // Fields updated on every load for existing entries (never prices/links — those are version-gated)
-const IMPORT_FIELDS = ['address','commute','commute_off','dist_mi','has_wd','has_ac','ac_type','has_parking','has_hardwood','notes','scrapable','impression'];
+const IMPORT_FIELDS = ['address','commute','commute_off','dist_mi','has_wd','has_ac','ac_type','has_parking','has_hardwood','notes','scrapable','impression','parking_fee'];
 // Fields the daily cron auto-pulls for SCRAPABLE listings — force-synced from code every load
 // (cron keeps code authoritative), so they update daily without a version bump.
 const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
@@ -1959,6 +1968,7 @@ function importList(source, listType) {
         has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
         status: w.status || 'not_visited', notes: w.notes || '',
         plans: w.plans || [], promo: w.promo || null, scrapable: w.scrapable || false,
+        parking_fee: w.parking_fee || 0,
         price_history: w.rent ? [{ date: today(), rent: w.rent }] : [],
         lat: w.lat, lng: w.lng, list: listType, added: today()
       });
