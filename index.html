@@ -1014,6 +1014,7 @@ function submitForm() {
     priceHistory.push({ date: today(), rent: newRent });
   }
   const a = {
+    ...(existing || {}),   // preserve fields with no form input (parking_fee, ac_type, commute_off, dist_mi, impression, scrapable, ...)
     id: editingId || uid(), name, address, url: get('f-url').value.trim(),
     rent: newRent, sqft: parseInt(get('f-sqft').value) || null,
     available: get('f-available').value || null, commute: parseInt(get('f-commute').value) || null,
