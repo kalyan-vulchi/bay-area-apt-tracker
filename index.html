@@ -414,7 +414,9 @@ const MAX_COMMUTE = 30;
 // (0 when the first/assigned spot is free/included). Sort, filters, budget, and
 // scoring all run on totalRent(); base rent is still what the trend graph tracks.
 function parkingFee(a){ return a.parking_fee || 0; }
-function totalRent(a){ return a.rent == null ? null : a.rent + parkingFee(a); }
+// Unavailable listings have no usable price -> null everywhere (N/A display, excluded
+// from budget/avg/sort/trends). The base rent value is kept in the record for history.
+function totalRent(a){ return (a.rent == null || a.unavailable) ? null : a.rent + parkingFee(a); }
 
 // ═══════════════════════════════════
 // STATE
@@ -468,6 +470,7 @@ function score(apt) {
   // assigned space. Paid-parking caveats surface as a tag from the notes instead.
   const missingReq = [], missingPref = [];
   const rentTot = totalRent(apt); // base rent + required parking
+  if (apt.unavailable)                         missingReq.push('Unavailable');
   if (!apt.has_wd)                              missingReq.push('In-unit W/D');
   if (!apt.has_ac)                              missingReq.push('AC');
   if (rentTot && rentTot > MAX_RENT)            missingReq.push('Over budget ($' + rentTot.toLocaleString() + ')');
@@ -708,7 +711,7 @@ function card(apt) {
                  s.qualifies ? 'qualifies' :
                  (!apt.has_wd || !apt.has_ac) ? 'missing-req' : 'missing-pref';
 
-  const rentClr = !apt.rent ? 'text-gray-400' :
+  const rentClr = (apt.unavailable || !apt.rent) ? 'text-gray-400' :
                   totalRent(apt) <= MAX_RENT ? 'text-green-700' : 'text-red-600';
   const comClr  = !apt.commute ? 'text-gray-400' :
                   apt.commute <= MAX_COMMUTE ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
@@ -763,19 +766,22 @@ function card(apt) {
       <p class="mt-1.5 text-xs text-gray-500 leading-relaxed bg-gray-50 rounded-lg px-3 py-2 italic">${esc(apt.notes)}</p>
     </details>` : '';
 
+  const availToggle = `<button onclick="event.stopPropagation();toggleAvailable('${apt.id}')" title="Click to mark ${apt.unavailable ? 'available' : 'unavailable'}" class="px-2.5 py-1.5 text-xs rounded-lg transition font-medium border ${apt.unavailable ? 'text-gray-500 bg-gray-100 border-gray-200 hover:bg-gray-200' : 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'}">${apt.unavailable ? '&#10007; Unavailable' : '&#10003; Available'}</button>`;
   const actions = isCorpus
-    ? `<button onclick="moveToShortlist('${apt.id}')" class="px-3 py-1.5 text-xs text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition font-medium border border-purple-200">+ Shortlist</button>`
-    : `<div class="flex gap-1.5">
+    ? `<div class="flex gap-1.5 flex-wrap">${availToggle}<button onclick="moveToShortlist('${apt.id}')" class="px-3 py-1.5 text-xs text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition font-medium border border-purple-200">+ Shortlist</button></div>`
+    : `<div class="flex gap-1.5 flex-wrap">
+         ${availToggle}
          ${listingBtn}
          <button onclick="openModal('${apt.id}')" class="px-2.5 py-1.5 text-xs text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Edit</button>
          <button onclick="deleteApt('${apt.id}')" class="px-2.5 py-1.5 text-xs text-red-500 bg-red-50 rounded-lg hover:bg-red-100 transition">Delete</button>
        </div>`;
 
   return `
-  <div class="apt-card bg-white rounded-xl shadow-sm border border-gray-100 ${border} p-4 animate-in cursor-pointer" data-id="${apt.id}" onclick="if(!event.target.closest('a,button,details')) focusMapMarker('${apt.id}')">
+  <div class="apt-card bg-white rounded-xl shadow-sm border border-gray-100 ${border} ${apt.unavailable ? 'opacity-60' : ''} p-4 animate-in cursor-pointer" data-id="${apt.id}" onclick="if(!event.target.closest('a,button,details')) focusMapMarker('${apt.id}')">
 
     <!-- Badge row -->
     <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+      ${apt.unavailable ? '<span class="px-2 py-0.5 text-xs rounded-full font-semibold bg-gray-200 text-gray-600 border border-gray-300">Unavailable</span>' : ''}
       <span class="px-2 py-0.5 text-xs rounded-full font-medium ${STATUS_STYLE[apt.status] || STATUS_STYLE.not_visited}">${STATUS_LABEL[apt.status] || 'Not Visited'}</span>
       <span class="px-2 py-0.5 text-xs rounded-full font-bold ${scoreClr}">${s.pts}/100</span>
       ${apt.status==='toured' && apt.impression ? `<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-indigo-100 text-indigo-700">Tour ${apt.impression}/10</span>` : ''}
@@ -790,8 +796,8 @@ function card(apt) {
         <p class="text-xs text-gray-400 truncate mt-0.5">${esc(apt.address)}</p>
       </div>
       <div class="text-right flex-shrink-0 ml-2">
-        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + totalRent(apt).toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
-        ${apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
+        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.unavailable ? 'N/A' : (apt.rent ? '$' + totalRent(apt).toLocaleString() : '—')}<span class="text-xs font-normal text-gray-400">/mo</span></div>
+        ${!apt.unavailable && apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
         <div class="text-xs text-gray-500 font-medium mt-0.5">1BR &middot; 1BA${apt.sqft ? ' &middot; ' + apt.sqft + ' sqft' : ''}</div>
         ${apt.available ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border font-medium ${availBadgeClr}">${availLabel}</div>` : ''}
         ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
@@ -890,7 +896,7 @@ function renderMapMarkers() {
     ? currentFilteredList.filter(a => a.lat && a.lng)
     : apartments.filter(a => a.list === activeTab && a.lat && a.lng);
   source.forEach(apt => {
-    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${totalRent(apt)<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? totalRent(apt).toLocaleString() : '—'}/mo</span>${apt.rent&&parkingFee(apt)?` <span style="font-size:10px;color:#9ca3af">(incl. $${parkingFee(apt)} pkg)</span>`:''} &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
+    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${apt.unavailable?'#9ca3af':(totalRent(apt)<=MAX_RENT?'#16a34a':'#dc2626')};font-weight:600">${apt.unavailable?'N/A':('$'+(apt.rent ? totalRent(apt).toLocaleString() : '—'))}/mo</span>${!apt.unavailable&&apt.rent&&parkingFee(apt)?` <span style="font-size:10px;color:#9ca3af">(incl. $${parkingFee(apt)} pkg)</span>`:''} &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
     mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon: makeMarkerIcon(apt, apt.id === selectedAptId) })
       .addTo(mapInst).bindPopup(popup);
   });
@@ -1052,6 +1058,17 @@ function moveToShortlist(id) {
   toast(`"${a.name}" moved to Shortlist`);
 }
 
+// Toggle a listing available <-> unavailable. Unavailable => price shows N/A,
+// excluded from trends, and drops out of budget/qualify (via totalRent -> null).
+function toggleAvailable(id) {
+  const a = apartments.find(x => x.id === id); if (!a) return;
+  a.unavailable = !a.unavailable;
+  saveData(); renderStats(); applyFilters(); renderMapMarkers();
+  if (currentView === 'trends') renderTrends();
+  if (currentView === 'summary') renderSummary();
+  toast(a.unavailable ? `"${a.name}" marked unavailable` : `"${a.name}" marked available`);
+}
+
 // ═══════════════════════════════════
 // VIEW
 // ═══════════════════════════════════
@@ -1162,7 +1179,7 @@ function renderTrends() {
     ? currentFilteredList
     : apartments.filter(a => a.list === activeTab);
 
-  const apts = allApts.filter(a => a.price_history && a.price_history.length > 0);
+  const apts = allApts.filter(a => a.price_history && a.price_history.length > 0 && !a.unavailable);
 
   const allDates = [...new Set(apts.flatMap(a => a.price_history.map(h => h.date)))].sort();
 
@@ -1282,7 +1299,7 @@ function renderTrends() {
   styleTrendsRangeButtons();
 
   // Build checkbox list (show all apartments, not just those with price history)
-  buildAptCheckboxList(allApts, datasets);
+  buildAptCheckboxList(allApts.filter(a => !a.unavailable), datasets);
   updateAptFilterLabel(apts.length);
   renderAvgByGroup();
 }
@@ -1308,7 +1325,7 @@ function renderAvgByGroup() {
   if (!canvas) return;
   const dim = get('avg-group-by')?.value || 'city';
   const source = currentFilteredList !== null ? currentFilteredList : apartments.filter(a => a.list === activeTab);
-  const apts = source.filter(a => a.rent);
+  const apts = source.filter(a => totalRent(a));
 
   const keyFn = dim === 'city'      ? (a => cityOf(a) || 'Unknown')
               : dim === 'condition' ? conditionOf
@@ -1407,7 +1424,7 @@ function renderSummary() {
   const total = apts.length;
   const withBudget = apts.filter(a => totalRent(a) && totalRent(a) <= MAX_RENT).length;
   const qualifies = apts.filter(a => score(a).qualifies).length;
-  const priced = apts.filter(a => a.rent);
+  const priced = apts.filter(a => totalRent(a));
   const avgRent = priced.length > 0
     ? Math.round(priced.reduce((s,a) => s + totalRent(a), 0) / priced.length)
     : 0;
@@ -1417,7 +1434,7 @@ function renderSummary() {
   const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
   let upCount = 0, downCount = 0;
   apts.forEach(a => {
-    if (!a.price_history || a.price_history.length < 2) return;
+    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
     const recent = a.price_history.filter(h => h.date >= sevenDaysAgo);
     if (recent.length >= 2) {
       const oldest = recent[0].rent;
@@ -1430,7 +1447,7 @@ function renderSummary() {
   const trendMsg = `${upCount} up, ${downCount} down`;
 
   // Price range
-  const rents = apts.filter(a => a.rent).map(a => totalRent(a)).sort((a,b) => a-b);
+  const rents = apts.filter(a => totalRent(a)).map(a => totalRent(a)).sort((a,b) => a-b);
   const minRent = rents.length > 0 ? rents[0] : 0;
   const maxRent = rents.length > 0 ? rents[rents.length-1] : 0;
   const spread = maxRent - minRent;
@@ -1447,7 +1464,7 @@ function renderSummary() {
   const fmtRent = r => r ? `$${r.toLocaleString()}` : 'call for price';
   const qual = apts.map(a => ({a, s: score(a)})).filter(x => x.s.qualifies);
   // Best overall match (highest score across everything)
-  const best = apts.map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
+  const best = apts.filter(a => !a.unavailable).map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
   if (best) notableParts.push(`<p>🎯 Best match: <strong>${best.a.name}</strong> — ${fmtRent(totalRent(best.a))}${best.a.commute ? ` · ${best.a.commute} min` : ''} · ${best.s.pts}/100${best.s.qualifies ? '' : ` <span class="text-amber-600">(misses ${best.s.missingReq.length})</span>`}</p>`);
   // Cheapest that meets ALL must-haves
   const cheapQual = [...qual].sort((x,y) => (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
@@ -1456,7 +1473,7 @@ function renderSummary() {
   const fastQual = qual.filter(x => x.a.commute).sort((x,y) => x.a.commute - y.a.commute)[0];
   if (fastQual && fastQual.a.name !== cheapQual?.a.name) notableParts.push(`<p>⚡ Fastest commute that qualifies: <strong>${fastQual.a.name}</strong> — ${fastQual.a.commute} min · ${fmtRent(totalRent(fastQual.a))}</p>`);
   // Best apartment you've actually toured
-  const bestToured = apts.filter(a => a.status === 'toured').map(a => ({a, s: score(a)}))
+  const bestToured = apts.filter(a => a.status === 'toured' && !a.unavailable).map(a => ({a, s: score(a)}))
     .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
   if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(totalRent(bestToured.a))}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
   if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
@@ -1465,7 +1482,7 @@ function renderSummary() {
   const insights = [];
   const movers = [];
   apts.forEach(a => {
-    if (!a.price_history || a.price_history.length < 2) return;
+    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
     const sorted = [...a.price_history].sort((x,y) => x.date.localeCompare(y.date));
     const first = sorted[0].rent, last = sorted[sorted.length-1].rent;
     if (first && last && first !== last) movers.push({ name: a.name, delta: last - first, from: first, to: last });
@@ -1476,7 +1493,7 @@ function renderSummary() {
   // Fresh drops this week — named list of everything that softened in the last 7 days
   const weekDrops = [];
   apts.forEach(a => {
-    if (!a.price_history || a.price_history.length < 2) return;
+    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
     const recent = [...a.price_history].filter(h => h.date >= sevenDaysAgo).sort((x,y) => x.date.localeCompare(y.date));
     if (recent.length >= 2) {
       const d = recent[recent.length-1].rent - recent[0].rent;
@@ -1969,7 +1986,7 @@ function importList(source, listType) {
         has_parking: w.has_parking ?? null, has_hardwood: w.has_hardwood ?? null,
         status: w.status || 'not_visited', notes: w.notes || '',
         plans: w.plans || [], promo: w.promo || null, scrapable: w.scrapable || false,
-        parking_fee: w.parking_fee || 0,
+        parking_fee: w.parking_fee || 0, unavailable: w.unavailable || false,
         price_history: w.rent ? [{ date: today(), rent: w.rent }] : [],
         lat: w.lat, lng: w.lng, list: listType, added: today()
       });
