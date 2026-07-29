@@ -142,10 +142,10 @@ Avalon Silicon Valley.**
   domains, Jun 10–11 & Jul 10–13); if it fires but stops committing for 2+ days,
   the cause is the env network, not the PAT or the pages (verify by WebFetching
   the pages yourself and testing the PAT).
-- ⚠️ **Mission Pointe is a standing user override:** code holds **$3,507** (a
-  specific Sonoma unit) while the cron reads the official *lowest* 1BR (**$3,327**,
-  unit 01-203). The cron resets it to $3,327 each morning; the user re-asserts
-  $3,507 via their daily export.
+- No standing overrides currently — all 6 match their official lowest 1BR. (A
+  brief Mission Pointe "$3,507" was a misread and was corrected to $3,327.) If the
+  user ever wants a specific unit's price to survive the cron, remove that listing
+  from the cron's prompt scope rather than fighting it daily.
 
 ---
 
