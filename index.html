@@ -396,7 +396,7 @@
     <p><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-1.5"></span>Over budget / commute</p>
     <p><span class="inline-block w-3 h-3 rounded-full bg-violet-500 mr-1.5"></span>Corpus</p>
     <p><span class="inline-block w-3 h-3 rounded-full bg-blue-600 mr-1.5"></span>Office</p>
-    <p><span class="inline-block w-3 h-3 rounded-full bg-amber-500 mr-1.5"></span>Home (Yathi's)</p>
+    <p><span class="inline-block w-3 h-3 rounded-full bg-amber-500 mr-1.5"></span>Home</p>
   </div>
 </div>
 
@@ -855,11 +855,11 @@ function initMap() {
     .addTo(mapInst).bindPopup('<b>Your Office</b><br>1375 Crossman Ave, Sunnyvale');
   const homeIcon = L.divIcon({
     className: '',
-    html: `<div style="background:#f59e0b;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">Yathi's Place</div>`,
+    html: `<div style="background:#f59e0b;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">Home</div>`,
     iconAnchor: [45, 12]
   });
   homeMarker = L.marker([HOME.lat, HOME.lng], { icon: homeIcon })
-    .addTo(mapInst).bindPopup('<b>Yathi\'s Place</b><br>151 Buckingham Dr, Santa Clara');
+    .addTo(mapInst).bindPopup('<b>Home</b><br>151 Buckingham Dr, Santa Clara');
   renderMapMarkers();
 }
 
