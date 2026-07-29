@@ -414,9 +414,7 @@ const MAX_COMMUTE = 30;
 // (0 when the first/assigned spot is free/included). Sort, filters, budget, and
 // scoring all run on totalRent(); base rent is still what the trend graph tracks.
 function parkingFee(a){ return a.parking_fee || 0; }
-// Unavailable listings have no usable price -> null everywhere (N/A display, excluded
-// from budget/avg/sort/trends). The base rent value is kept in the record for history.
-function totalRent(a){ return (a.rent == null || a.unavailable) ? null : a.rent + parkingFee(a); }
+function totalRent(a){ return a.rent == null ? null : a.rent + parkingFee(a); }
 
 // ═══════════════════════════════════
 // STATE
@@ -470,7 +468,6 @@ function score(apt) {
   // assigned space. Paid-parking caveats surface as a tag from the notes instead.
   const missingReq = [], missingPref = [];
   const rentTot = totalRent(apt); // base rent + required parking
-  if (apt.unavailable)                         missingReq.push('Unavailable');
   if (!apt.has_wd)                              missingReq.push('In-unit W/D');
   if (!apt.has_ac)                              missingReq.push('AC');
   if (rentTot && rentTot > MAX_RENT)            missingReq.push('Over budget ($' + rentTot.toLocaleString() + ')');
@@ -711,7 +708,7 @@ function card(apt) {
                  s.qualifies ? 'qualifies' :
                  (!apt.has_wd || !apt.has_ac) ? 'missing-req' : 'missing-pref';
 
-  const rentClr = (apt.unavailable || !apt.rent) ? 'text-gray-400' :
+  const rentClr = !apt.rent ? 'text-gray-400' :
                   totalRent(apt) <= MAX_RENT ? 'text-green-700' : 'text-red-600';
   const comClr  = !apt.commute ? 'text-gray-400' :
                   apt.commute <= MAX_COMMUTE ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
@@ -791,8 +788,8 @@ function card(apt) {
         <p class="text-xs text-gray-400 truncate mt-0.5">${esc(apt.address)}</p>
       </div>
       <div class="text-right flex-shrink-0 ml-2">
-        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.unavailable ? 'N/A' : (apt.rent ? '$' + totalRent(apt).toLocaleString() : '—')}<span class="text-xs font-normal text-gray-400">/mo</span></div>
-        ${!apt.unavailable && apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
+        <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + totalRent(apt).toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
+        ${apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
         <div class="text-xs text-gray-500 font-medium mt-0.5">1BR &middot; 1BA${apt.sqft ? ' &middot; ' + apt.sqft + ' sqft' : ''}</div>
         ${apt.available ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border font-medium ${availBadgeClr}">${availLabel}</div>` : ''}
         ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
@@ -891,7 +888,7 @@ function renderMapMarkers() {
     ? currentFilteredList.filter(a => a.lat && a.lng)
     : apartments.filter(a => a.list === activeTab && a.lat && a.lng);
   source.forEach(apt => {
-    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${apt.unavailable?'#9ca3af':(totalRent(apt)<=MAX_RENT?'#16a34a':'#dc2626')};font-weight:600">${apt.unavailable?'N/A':('$'+(apt.rent ? totalRent(apt).toLocaleString() : '—'))}/mo</span>${!apt.unavailable&&apt.rent&&parkingFee(apt)?` <span style="font-size:10px;color:#9ca3af">(incl. $${parkingFee(apt)} pkg)</span>`:''} &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
+    const popup = `<div><b>${esc(apt.name)}</b><br><span style="color:${totalRent(apt)<=MAX_RENT?'#16a34a':'#dc2626'};font-weight:600">$${apt.rent ? totalRent(apt).toLocaleString() : '—'}/mo</span>${apt.rent&&parkingFee(apt)?` <span style="font-size:10px;color:#9ca3af">(incl. $${parkingFee(apt)} pkg)</span>`:''} &middot; 1BR 1BA${apt.sqft?' &middot; '+apt.sqft+'sqft':''}${apt.commute ? '<br>'+apt.commute+' min peak'+(apt.commute_off?' &middot; '+apt.commute_off+' min off-peak':'')+(apt.dist_mi?' &middot; '+apt.dist_mi+' mi':'') : ''}<br><span style="font-size:11px;color:#6b7280">${esc(apt.address)}</span></div>`;
     mapMarkers[apt.id] = L.marker([apt.lat, apt.lng], { icon: makeMarkerIcon(apt, apt.id === selectedAptId) })
       .addTo(mapInst).bindPopup(popup);
   });
@@ -1440,7 +1437,7 @@ function renderSummary() {
   const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
   let upCount = 0, downCount = 0;
   apts.forEach(a => {
-    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
+    if (!a.price_history || a.price_history.length < 2) return;
     const recent = a.price_history.filter(h => h.date >= sevenDaysAgo);
     if (recent.length >= 2) {
       const oldest = recent[0].rent;
@@ -1470,7 +1467,7 @@ function renderSummary() {
   const fmtRent = r => r ? `$${r.toLocaleString()}` : 'call for price';
   const qual = apts.map(a => ({a, s: score(a)})).filter(x => x.s.qualifies);
   // Best overall match (highest score across everything)
-  const best = apts.filter(a => !a.unavailable).map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
+  const best = apts.map(a => ({a, s: score(a)})).sort((x,y) => y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
   if (best) notableParts.push(`<p>🎯 Best match: <strong>${best.a.name}</strong> — ${fmtRent(totalRent(best.a))}${best.a.commute ? ` · ${best.a.commute} min` : ''} · ${best.s.pts}/100${best.s.qualifies ? '' : ` <span class="text-amber-600">(misses ${best.s.missingReq.length})</span>`}</p>`);
   // Cheapest that meets ALL must-haves
   const cheapQual = [...qual].sort((x,y) => (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
@@ -1479,7 +1476,7 @@ function renderSummary() {
   const fastQual = qual.filter(x => x.a.commute).sort((x,y) => x.a.commute - y.a.commute)[0];
   if (fastQual && fastQual.a.name !== cheapQual?.a.name) notableParts.push(`<p>⚡ Fastest commute that qualifies: <strong>${fastQual.a.name}</strong> — ${fastQual.a.commute} min · ${fmtRent(totalRent(fastQual.a))}</p>`);
   // Best apartment you've actually toured
-  const bestToured = apts.filter(a => a.status === 'toured' && !a.unavailable).map(a => ({a, s: score(a)}))
+  const bestToured = apts.filter(a => a.status === 'toured').map(a => ({a, s: score(a)}))
     .sort((x,y) => (y.s.qualifies - x.s.qualifies) || y.s.pts - x.s.pts || (totalRent(x.a)||9e9) - (totalRent(y.a)||9e9))[0];
   if (bestToured) notableParts.push(`<p>🏆 Best you've toured: <strong>${bestToured.a.name}</strong> — ${fmtRent(totalRent(bestToured.a))}${bestToured.s.qualifies ? ' ✓ meets all musts' : ` <span class="text-amber-600">(misses ${bestToured.s.missingReq.join(', ')})</span>`}</p>`);
   if (qual.length === 0) notableParts.unshift(`<p class="text-amber-600">⚠️ 0 apartments meet all must-haves (W/D + AC ≤ $${MAX_RENT.toLocaleString()}, ≤ ${MAX_COMMUTE} min). See near-misses below.</p>`);
@@ -1488,7 +1485,7 @@ function renderSummary() {
   const insights = [];
   const movers = [];
   apts.forEach(a => {
-    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
+    if (!a.price_history || a.price_history.length < 2) return;
     const sorted = [...a.price_history].sort((x,y) => x.date.localeCompare(y.date));
     const first = sorted[0].rent, last = sorted[sorted.length-1].rent;
     if (first && last && first !== last) movers.push({ name: a.name, delta: last - first, from: first, to: last });
@@ -1499,7 +1496,7 @@ function renderSummary() {
   // Fresh drops this week — named list of everything that softened in the last 7 days
   const weekDrops = [];
   apts.forEach(a => {
-    if (a.unavailable || !a.price_history || a.price_history.length < 2) return;
+    if (!a.price_history || a.price_history.length < 2) return;
     const recent = [...a.price_history].filter(h => h.date >= sevenDaysAgo).sort((x,y) => x.date.localeCompare(y.date));
     if (recent.length >= 2) {
       const d = recent[recent.length-1].rent - recent[0].rent;
@@ -1769,7 +1766,7 @@ const SHORTLIST = [
 
   { name:'River Terrace', address:'730 Agnew Rd, Santa Clara, CA 95054',
     url:'https://www.udr.com/san-francisco-bay-area-apartments/santa-clara/river-terrace/apartments-pricing/#/?sort=rent&sortdir=asc&beds=1', lat:37.3942417, lng:-121.9488377,
-    rent:3122, sqft:null, available:'2026-06-09', commute:19, commute_off:11, dist_mi:6.7, parking_fee:95, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false, scrapable:true,
+    rent:3022, sqft:null, available:'2026-06-09', commute:19, commute_off:11, dist_mi:6.7, parking_fee:95, has_wd:true, has_ac:true, ac_type:'central', has_parking:false, has_hardwood:false, scrapable:true,
     status:'toured', impression:6,
     notes:'TOURED Jun 3 — unit 213 is the only good option (slight road noise). Central AC + in-unit W/D confirmed. Good kitchen design. VERIFY: is unit 213 renovated? Ask leasing for specific amenities/finishes on 213. PAID PARKING (required): reserved garage $95/mo, additional space $90/mo, premium $105/mo. Walk-in closets, patio/balcony, granite countertops. No current availability — sign up for alerts. Reviews: UDR charges heavily on move-out, parking/locker fees extra, occasional marijuana smell weekends, theft reported, maintenance concerns. UDR.' },
 
@@ -1796,7 +1793,7 @@ const SHORTLIST = [
 
   { name:'Mission Pointe by Windsor', address:'1063 Morse Ave, Sunnyvale, CA 94089',
     url:'https://www.windsorcommunities.com/properties/mission-pointe-by-windsor/floorplans/?bedroom=.1bed', lat:37.4003031, lng:-122.0163202,
-    rent:3327, sqft:580, available:'2026-08-29', commute:7, commute_off:7, dist_mi:2.7, parking_fee:10, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true, scrapable:true,
+    rent:3507, sqft:580, available:'2026-08-29', commute:7, commute_off:7, dist_mi:2.7, parking_fee:10, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true, scrapable:true,
     status:'toured', impression:8,
     plans:[{label:'Sonoma',sqft:580,rent:3197,available:'2026-07-24'},{label:'Santa Barbara',sqft:704,rent:3562,available:'2026-07-17'}],
     notes:'TOURED Jun 3 — excellent apartments and community. 4 min to office. AC: portable unit +$40/mo for summer (central heater built-in, no central A/C). W/D: in-unit in Santa Barbara floorplan; Sonoma uses shared laundry per building. Walk-in closet. Santa Barbara 1st floor: no fireplace, great TV/sofa layout, big balcony + large balcony storage. PAID PARKING: reserved garage $40/mo, open $10/mo (first-come), guest pass $3/day. Reviews: staff highly rated (5 stars), generally quiet, occasional upstairs neighbor noise, water heater noise. Windsor.' },
@@ -1937,7 +1934,7 @@ const SHORTLIST = [
 const CORPUS_LIST = [
   { name:'Avalon Silicon Valley', address:'1257 Lakeside Drive, Sunnyvale, CA 94085',
     url:'https://www.avaloncommunities.com/california/sunnyvale-apartments/avalon-silicon-valley/#community-unit-listings', lat:37.3877241, lng:-121.993485,
-    rent:3605, sqft:700, available:'2026-07-29', commute:11, commute_off:6, dist_mi:4.2, has_wd:true, has_ac:true, ac_type:'central', has_parking:null, has_hardwood:null, scrapable:true,
+    rent:3610, sqft:700, available:'2026-07-29', commute:11, commute_off:6, dist_mi:4.2, has_wd:true, has_ac:true, ac_type:'central', has_parking:null, has_hardwood:null, scrapable:true,
     promo:null,
     plans:[{label:'A1',sqft:700,rent:3215,available:null},{label:'A2',sqft:700,rent:3285,available:null},{label:'A2-S',sqft:700,rent:3415,available:null}],
     impression:5,
@@ -1956,7 +1953,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 52; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 53; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
