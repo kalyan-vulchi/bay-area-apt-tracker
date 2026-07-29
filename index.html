@@ -1179,7 +1179,9 @@ function renderTrends() {
     ? currentFilteredList
     : apartments.filter(a => a.list === activeTab);
 
-  const apts = allApts.filter(a => a.price_history && a.price_history.length > 0 && !a.unavailable);
+  // Unavailable listings stay on the chart to show their history for the dates they were
+  // available; their line just stops at the last real data point (handled in the map below).
+  const apts = allApts.filter(a => a.price_history && a.price_history.length > 0);
 
   const allDates = [...new Set(apts.flatMap(a => a.price_history.map(h => h.date)))].sort();
 
@@ -1200,22 +1202,31 @@ function renderTrends() {
 
   const datasets = apts.map((apt, i) => {
     const col = CHART_COLORS[i % CHART_COLORS.length];
-    const label = apt.name.replace(' Apartments','').replace(' Apartment Homes','');
+    let label = apt.name.replace(' Apartments','').replace(' Apartment Homes','');
+    if (apt.unavailable) label += ' (unavail.)';
+    const lastDate = apt.price_history.reduce((m, h) => h.date > m ? h.date : m, '');
     return {
       label,
       _fullName: apt.name,
       _color: col,
       // Forward-fill: carry the last known price across dates with no update, so every
       // listing has a continuous line through to the latest date (no broken/sparse lines).
+      // For an unavailable listing, stop at its last real data point — its history for the
+      // dates it was available still shows, but the line isn't projected forward to today.
       data: (() => {
         const byDate = {};
         apt.price_history.forEach(h => { byDate[h.date] = h.rent; }); // last value wins per date
         let last = null;
-        return allDates.map(d => { if (byDate[d] != null) last = byDate[d]; return last; }).slice(startIdx);
+        return allDates.map(d => {
+          if (byDate[d] != null) last = byDate[d];
+          if (apt.unavailable && d > lastDate) return null;
+          return last;
+        }).slice(startIdx);
       })(),
       borderColor: col,
       backgroundColor: col + '20',
       borderWidth: 2,
+      borderDash: apt.unavailable ? [5, 4] : undefined,
       pointRadius: 5,
       pointHoverRadius: 8,
       tension: 0.15,
@@ -1299,7 +1310,7 @@ function renderTrends() {
   styleTrendsRangeButtons();
 
   // Build checkbox list (show all apartments, not just those with price history)
-  buildAptCheckboxList(allApts.filter(a => !a.unavailable), datasets);
+  buildAptCheckboxList(allApts, datasets);
   updateAptFilterLabel(apts.length);
   renderAvgByGroup();
 }
