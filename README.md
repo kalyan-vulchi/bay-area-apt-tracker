@@ -120,11 +120,14 @@ price to N/A and dropped it from scoring; that was reverted per the user's call:
 
 ---
 
-## 6. The daily cron + the 6 "scrapable" listings
+## 6. The daily cron + the "scrapable" listings
 
-Six listings are `scrapable:true` and auto-priced by a **daily cloud routine**:
-**Cezanne, Apricot Pit, The Podium, River Terrace, Mission Pointe by Windsor,
-Avalon Silicon Valley.**
+Five listings are `scrapable:true` and auto-priced by a **daily cloud routine**:
+**Cezanne, Apricot Pit, The Podium, River Terrace, Avalon Silicon Valley.**
+(Mission Pointe by Windsor *was* scrapable but was dropped to manual on Aug 1
+2026 — the user tracks a base rent that differs from the site's lowest 1BR, so
+it's `scrapable:false` and removed from the cron's prompt so the cron won't reset
+it.)
 
 - The routine runs **daily at ~5 AM Pacific (12:00 UTC)**, WebFetches each
   property's **official** page, updates `rent`/`available`/`promo` for those 6 in
