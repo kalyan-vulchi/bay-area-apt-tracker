@@ -1731,7 +1731,7 @@ const SHORTLIST = [
 
   { name:'Bella Vista Apartments', address:'1500 Vista Club Cir, Santa Clara, CA 95054',
     url:'https://www.bellavista-apartments.com/apartments/ca/santa-clara/floor-plans#/?beds=1', lat:37.402502, lng:-121.953418,
-    rent:3046, sqft:null, available:null, commute:17, commute_off:9, dist_mi:6.5, has_wd:true, has_ac:true, ac_type:'window', has_parking:true, has_hardwood:true,
+    rent:3298, sqft:null, available:null, commute:17, commute_off:9, dist_mi:6.5, has_wd:true, has_ac:true, ac_type:'window', has_parking:true, has_hardwood:true,
     status:'toured', impression:7,
     notes:'TOURED Jun 20 4:30PM — no current availability but model units shown. Good community + ambience, decent interior. Hardwood (per tour recollection — confirm on next visit). Nice 24hr gym, piano by leasing office, 2 pools + 1 jacuzzi. Window AC in living room. Attached washroom. Every unit has exterior storage by the door. Parking: 1 assigned free + free uncovered guest parking; NO street parking. ⚠️ W/D: smallest 1B1B has NO in-unit W/D (cheaper) — AVOID that one; larger 1BRs have it. If something opens for Aug, reach out. 1BR from $2,733, 10 floor plans 509-1,175 sqft. Gated, near Levi\'s Stadium, North Santa Clara. Call (408) 496-6300.' },
 
@@ -1953,7 +1953,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 63; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 64; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
