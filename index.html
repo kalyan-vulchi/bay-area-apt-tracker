@@ -444,8 +444,10 @@ function priceBanner(a) {
     const cls = d < 0 ? 'bg-green-50 text-green-700 border-green-200'
               : d > 0 ? 'bg-red-50 text-red-600 border-red-200'
               :         'bg-gray-50 text-gray-500 border-gray-200';
-    const sign = d > 0 ? '+' : '';
-    return `<span class="px-1.5 py-0.5 rounded border ${cls} whitespace-nowrap" title="${label} $${ref.toLocaleString()} vs current $${s.cur.toLocaleString()} (${sign}${d}%)"><span class="opacity-70">${label}</span> $${ref.toLocaleString()} <span class="font-semibold">${sign}${d}%</span></span>`;
+    const delta = s.cur - ref;                    // $ change from the reference
+    const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+    const dollars = `${sign}$${Math.abs(delta).toLocaleString()}`;
+    return `<span class="px-1.5 py-0.5 rounded border ${cls} whitespace-nowrap" title="${label} $${ref.toLocaleString()} vs current $${s.cur.toLocaleString()} (${dollars}, ${d>0?'+':''}${d}%)"><span class="opacity-70">${label}</span> ${dollars} <span class="font-semibold">${d>0?'+':''}${d}%</span></span>`;
   };
   return `
     <div class="flex flex-wrap gap-1 text-[10px] font-medium mb-2.5">
