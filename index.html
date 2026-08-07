@@ -1814,7 +1814,7 @@ const SHORTLIST = [
 
   { name:'Marina Cove', address:'3480 Granada Ave, Santa Clara, CA 95051',
     url:'https://www.essexapartmenthomes.com/apartments/santa-clara/marina-cove/floor-plans-and-pricing', lat:37.349008, lng:-121.9924443,
-    rent:3099, sqft:725, available:'2026-07-07', commute:21, commute_off:11, dist_mi:6.8, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true,
+    rent:3137, sqft:725, available:'2026-07-07', commute:21, commute_off:11, dist_mi:6.8, has_wd:true, has_ac:true, ac_type:'window', has_parking:false, has_hardwood:true,
     status:'toured', impression:5,
     plans:[{label:'1BR',sqft:725,rent:3117,available:'2026-07-07'},{label:'1BR',sqft:720,rent:3159,available:'2026-07-04'},{label:'1BR',sqft:725,rent:3269,available:'2026-06-25'},{label:'1BR',sqft:720,rent:3277,available:'2026-06-21'}],
     notes:'TOURED Jun 20 4PM (self-guided) — decent community, average/meh interior design. In-unit W/D confirmed. Window AC in living room. 2nd-floor units have slanted/tall ceilings. Parking: 1st spot assigned + free; additional spaces $50-75/mo (waitlist); street + guest parking. LEASE PERKS: 30-day satisfaction guarantee (transfer/break with no fees in month 1); short-term leases (premium); 12-month lease has a 1-month lease-break option. 1BR from $3,117 (725 sqft, available Jul 7). In-unit W/D + AC confirmed. Wood-style flooring + carpet mix. Parking — confirm free vs paid. Private patio/balcony. Quartz countertops. Essex. Santa Clara.' },
@@ -1995,7 +1995,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 68; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 69; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
