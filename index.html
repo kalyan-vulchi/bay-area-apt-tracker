@@ -416,6 +416,43 @@ const MAX_COMMUTE = 30;
 function parkingFee(a){ return a.parking_fee || 0; }
 function totalRent(a){ return a.rent == null ? null : a.rent + parkingFee(a); }
 
+// Price stats from a listing's base-rent history (parking is flat, so % deltas are the
+// same on base or total). Returns nulls if there isn't enough history to compare.
+function priceStats(a) {
+  const hist = (a.price_history || []).filter(h => h.rent);
+  if (hist.length < 2 || a.rent == null) return null;
+  const rents = hist.map(h => h.rent);
+  const cur = a.rent;
+  const peak = Math.max(...rents);
+  const low  = Math.min(...rents);
+  const avg  = Math.round(rents.reduce((s, r) => s + r, 0) / rents.length);
+  const cutoff = new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0];
+  const recent = hist.filter(h => h.date >= cutoff).map(h => h.rent);
+  const avg4 = recent.length ? Math.round(recent.reduce((s, r) => s + r, 0) / recent.length) : null;
+  const pct = base => base ? Math.round(((cur - base) / base) * 100) : 0;
+  return { cur, peak, low, avg, avg4,
+           dPeak: pct(peak), dLow: pct(low), dAvg: pct(avg), d4: avg4 == null ? null : pct(avg4) };
+}
+
+// A concise banner of % change vs peak / low / overall avg / last-4-week avg.
+// Below the reference = green (cheaper for a renter), above = red, flat = gray.
+function priceBanner(a) {
+  const s = priceStats(a);
+  if (!s) return '';
+  const pill = (label, d) => {
+    if (d == null) return '';
+    const cls = d < 0 ? 'bg-green-50 text-green-700 border-green-200'
+              : d > 0 ? 'bg-red-50 text-red-600 border-red-200'
+              :         'bg-gray-50 text-gray-500 border-gray-200';
+    const sign = d > 0 ? '+' : '';
+    return `<span class="px-1.5 py-0.5 rounded border ${cls} whitespace-nowrap" title="${label}: ${sign}${d}% vs current $${s.cur.toLocaleString()}">${label} ${sign}${d}%</span>`;
+  };
+  return `
+    <div class="flex flex-wrap gap-1 text-[10px] font-medium mb-2.5">
+      ${pill('Peak', s.dPeak)}${pill('Low', s.dLow)}${pill('Avg', s.dAvg)}${pill('4wk', s.d4)}
+    </div>`;
+}
+
 // ═══════════════════════════════════
 // STATE
 // ═══════════════════════════════════
@@ -795,6 +832,9 @@ function card(apt) {
         ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
       </div>
     </div>
+
+    <!-- Price-change banner (vs peak / low / avg / 4wk avg) -->
+    ${priceBanner(apt)}
 
     <!-- Amenities -->
     <div class="flex flex-wrap gap-1.5 mb-3">
