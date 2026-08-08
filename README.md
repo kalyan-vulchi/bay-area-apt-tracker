@@ -56,7 +56,9 @@ On every load, `importList()` and `importPrices()` reconcile the code seed with 
 name, address, url, lat, lng,
 rent            // BASE monthly rent (integer). Trends tracks this.
 parking_fee     // required first-spot parking cost; 0 when included (see §4)
-sqft, available // available = earliest move-in date "YYYY-MM-DD" or null
+sqft            // no availability DATE is tracked/displayed anymore — use the
+                // `unavailable` toggle instead (the `available` date field may
+                // still exist in old records but is unused/hidden)
 commute, commute_off, dist_mi   // peak / off-peak minutes, miles (see §7)
 has_wd, has_ac, ac_type, has_parking, has_hardwood   // booleans + ac_type string
 status          // 'not_visited' | 'toured'  (browser-owned)
@@ -104,6 +106,10 @@ first spot costs money; `0` when the first/assigned spot is free/included.
 
 Each card has a green **"✓ Available"** / grey **"✕ Unavailable"** toggle
 (`toggleAvailable()`), field `unavailable`.
+
+Availability is tracked ONLY via this toggle — **no move-in dates** anywhere
+(the date badge, plan-row dates, date sort, and edit-modal date field were all
+removed). The list filter "Available" hides listings marked unavailable.
 
 **Unavailable is purely a visual grey-out** (dimmed card + "Unavailable" badge).
 Score, qualification, and price are **still computed from the latest known price**
