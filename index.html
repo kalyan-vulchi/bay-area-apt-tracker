@@ -126,7 +126,7 @@
     <option value="over_budget">💸 Over Budget</option>
     <option value="commute_ok">🚗 Commute &le; 30 min</option>
     <option value="has_promo">🏷️ Has Promotion</option>
-    <option value="avail_soon">🗓️ Available &le; 30 days</option>
+    <option value="available">✅ Available</option>
     <option value="not_scrapable">✋ Manual price update (not auto)</option>
     <option value="scrapable">🤖 Auto-priced (scrapable)</option>
     <option value="missing_dealbreaker">Missing Deal-breaker</option>
@@ -142,7 +142,6 @@
     <option value="rent_asc">Rent (low to high)</option>
     <option value="rent_desc">Rent (high to low)</option>
     <option value="commute_asc">Commute (shortest)</option>
-    <option value="avail_asc">Available (soonest)</option>
     <option value="date_desc">Newest Added</option>
   </select>
   <button onclick="clearFilters()" class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">Clear</button>
@@ -306,7 +305,7 @@
         </div>
         <p id="geocode-status" class="text-xs text-gray-400 mt-1 h-4"></p>
       </div>
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rent/mo ($) *</label>
           <input id="f-rent" type="number" placeholder="2900" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -314,10 +313,6 @@
         <div>
           <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Sqft</label>
           <input id="f-sqft" type="number" placeholder="700" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Available</label>
-          <input id="f-available" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
       <div class="grid grid-cols-2 gap-4">
@@ -607,7 +602,6 @@ function applyFilters() {
   const st  = get('filter-status').value;
   const cr  = get('filter-criteria').value;
   const srt = get('sort-by').value;
-  const now = new Date();
 
   let list = apartments.filter(a => {
     if (a.list !== activeTab) return false;
@@ -626,7 +620,7 @@ function applyFilters() {
     if (cr === 'over_budget'         && (!totalRent(a) || totalRent(a) <= MAX_RENT)) return false;
     if (cr === 'commute_ok'          && !commuteOk) return false;
     if (cr === 'has_promo'           && !a.promo) return false;
-    if (cr === 'avail_soon'          && (!a.available || (new Date(a.available) - now) / 86400000 > 30)) return false;
+    if (cr === 'available'           && a.unavailable) return false;
     if (cr === 'near_miss'           && !isNearMiss(a)) return false;
     if (cr === 'needs_verify'        && !(a.status !== 'toured' && totalRent(a) && totalRent(a) <= MAX_RENT && commuteOk && (a.has_wd === null || a.has_ac === null))) return false;
     if (cr === 'scrapable'           && a.scrapable !== true) return false;
@@ -641,7 +635,6 @@ function applyFilters() {
       case 'rent_asc':    return (totalRent(a) ?? 9999) - (totalRent(b) ?? 9999);
       case 'rent_desc':   return (totalRent(b) || 0) - (totalRent(a) || 0);
       case 'commute_asc': return (a.commute || 999) - (b.commute || 999);
-      case 'avail_asc':   return (a.available ? new Date(a.available) : new Date('2099-01-01')) - (b.available ? new Date(b.available) : new Date('2099-01-01'));
       case 'date_desc':   return new Date(b.added) - new Date(a.added);
       default: return 0;
     }
@@ -755,14 +748,6 @@ function card(apt) {
                    s.pts >= 55 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600';
   const total = (apt.rent || 0) + (apt.utilities || 0) + parkingFee(apt);
 
-  const now = new Date();
-  const availDate = apt.available ? new Date(apt.available + 'T12:00:00') : null;
-  const availNow  = apt.available && apt.available <= today();   // today or earlier = available now
-  const availSoon = availDate && !availNow && (availDate - now) / 86400000 <= 14;
-  const availBadgeClr = (availNow || availSoon) ? 'bg-green-100 text-green-700 border-green-200' :
-                                                  'bg-blue-50 text-blue-600 border-blue-100';
-  const availLabel = availNow ? 'Available now' : 'Avail: ' + fmtDate(apt.available);
-
   const mapsUrl = apt.address
     ? `https://www.google.com/maps/dir/${enc(apt.address)}/${enc(OFFICE_ADDRESS)}/@,12z/data=!4m2!4m1!3e0`
     : '#';
@@ -780,15 +765,9 @@ function card(apt) {
       <div class="divide-y divide-gray-100">
         ${apt.plans.map(p => {
           const pc = p.rent && p.rent <= MAX_RENT ? 'text-green-700 font-semibold' : p.rent ? 'text-red-600 font-semibold' : 'text-gray-400';
-          const pd = p.available ? new Date(p.available + 'T12:00:00') : null;
-          const pdPast = pd && pd < now;
-          const pdClr = pdPast ? 'text-gray-400' : pd && (pd - now)/86400000 <= 14 ? 'text-green-600' : 'text-blue-600';
           return `<div class="plan-row">
             <span class="font-medium text-gray-700">${esc(p.label)} &middot; ${p.sqft || '?'} sqft</span>
-            <div class="flex items-center gap-3">
-              <span class="${pc}">${p.rent ? '$' + p.rent.toLocaleString() + '/mo' : 'Call for price'}</span>
-              ${p.available ? `<span class="${pdClr} text-xs">${pdPast ? '(passed) ' : ''}${fmtDate(p.available)}</span>` : '<span class="text-gray-400 text-xs">TBD</span>'}
-            </div>
+            <span class="${pc}">${p.rent ? '$' + p.rent.toLocaleString() + '/mo' : 'Call for price'}</span>
           </div>`;
         }).join('')}
       </div>
@@ -830,7 +809,6 @@ function card(apt) {
         <div class="text-xl font-bold ${rentClr} leading-tight">${apt.rent ? '$' + totalRent(apt).toLocaleString() : '—'}<span class="text-xs font-normal text-gray-400">/mo</span></div>
         ${apt.rent && parkingFee(apt) ? `<div class="text-xs text-gray-400 mt-0.5">$${apt.rent.toLocaleString()} + $${parkingFee(apt)} parking</div>` : ''}
         <div class="text-xs text-gray-500 font-medium mt-0.5">1BR &middot; 1BA${apt.sqft ? ' &middot; ' + apt.sqft + ' sqft' : ''}</div>
-        ${apt.available ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border font-medium ${availBadgeClr}">${availLabel}</div>` : ''}
         ${apt.utilities ? `<div class="text-xs text-gray-400 mt-1">+$${apt.utilities} util &rarr; <span class="font-semibold text-gray-600">$${total.toLocaleString()}</span> total</div>` : ''}
       </div>
     </div>
@@ -1014,7 +992,7 @@ function openModal(id = null) {
     const a = apartments.find(x => x.id === id); if (!a) return;
     get('f-name').value = a.name || '';       get('f-url').value = a.url || '';
     get('f-address').value = a.address || ''; get('f-rent').value = a.rent || '';
-    get('f-sqft').value = a.sqft || '';       get('f-available').value = a.available || '';
+    get('f-sqft').value = a.sqft || '';
     get('f-commute').value = a.commute || ''; get('f-utilities').value = a.utilities || '';
     get('f-notes').value = a.notes || '';
     checks['f-wd'] = !!a.has_wd; checks['f-ac'] = !!a.has_ac;
@@ -1027,7 +1005,7 @@ function openModal(id = null) {
       get('geocode-status').className = 'text-xs text-green-600 mt-1 h-4';
     }
   } else {
-    ['f-name','f-url','f-address','f-rent','f-sqft','f-available','f-commute','f-utilities','f-notes'].forEach(f => get(f).value = '');
+    ['f-name','f-url','f-address','f-rent','f-sqft','f-commute','f-utilities','f-notes'].forEach(f => get(f).value = '');
     document.querySelector('input[name="f-status"][value="not_visited"]').checked = true;
   }
   Object.entries(checks).forEach(([cid, val]) => { get(cid).checked = val; styleCheckbox(cid, 'lbl-' + cid.replace('f-','')); });
@@ -1057,7 +1035,7 @@ function submitForm() {
     ...(existing || {}),   // preserve fields with no form input (parking_fee, ac_type, commute_off, dist_mi, impression, scrapable, ...)
     id: editingId || uid(), name, address, url: get('f-url').value.trim(),
     rent: newRent, sqft: parseInt(get('f-sqft').value) || null,
-    available: get('f-available').value || null, commute: parseInt(get('f-commute').value) || null,
+    commute: parseInt(get('f-commute').value) || null,
     utilities: parseInt(get('f-utilities').value) || null,
     has_wd: get('f-wd').checked, has_ac: get('f-ac').checked,
     has_parking: get('f-parking').checked, has_hardwood: get('f-hardwood').checked,
@@ -1141,12 +1119,12 @@ function setView(v) {
 function exportCSV() {
   const src = apartments.filter(a => a.list === activeTab);
   if (!src.length) { toast('Nothing to export'); return; }
-  const H = ['Name','List','Address','Rent','Utilities','Total','Sqft','Commute(min)','W/D','AC','Parking','Hardwood','Status','Available','Score','Promo','Notes','URL','Added'];
+  const H = ['Name','List','Address','Rent','Utilities','Total','Sqft','Commute(min)','W/D','AC','Parking','Hardwood','Status','Available?','Score','Promo','Notes','URL','Added'];
   const rows = src.map(a => {
     const s = score(a);
     return [a.name, a.list, a.address, a.rent||'', a.utilities||'', (a.rent||0)+(a.utilities||0),
             a.sqft||'', a.commute||'', yn(a.has_wd), yn(a.has_ac), yn(a.has_parking), yn(a.has_hardwood),
-            a.status, a.available||'', s.pts, a.promo||'', a.notes||'', a.url||'', a.added]
+            a.status, a.unavailable ? 'No' : 'Yes', s.pts, a.promo||'', a.notes||'', a.url||'', a.added]
       .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
   });
   const csv = [H.join(','), ...rows].join('\n');
