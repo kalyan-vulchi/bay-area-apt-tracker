@@ -416,13 +416,19 @@ function totalRent(a){ return a.rent == null ? null : a.rent + parkingFee(a); }
 function priceStats(a) {
   const hist = (a.price_history || []).filter(h => h.rent);
   if (hist.length < 2 || a.rent == null) return null;
-  const rents = hist.map(h => h.rent);
+  // Collapse to one value per date (last wins), matching how the trends chart
+  // plots it — so the banner's peak/low/avg reflect the charted series, not raw
+  // intraday duplicates (which could show a "low" the chart never displays).
+  const byDate = {};
+  hist.forEach(h => { byDate[h.date] = h.rent; });
+  const dates = Object.keys(byDate).sort();
+  const rents = dates.map(d => byDate[d]);
   const cur = a.rent;
   const peak = Math.max(...rents);
   const low  = Math.min(...rents);
   const avg  = Math.round(rents.reduce((s, r) => s + r, 0) / rents.length);
   const cutoff = new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0];
-  const recent = hist.filter(h => h.date >= cutoff).map(h => h.rent);
+  const recent = dates.filter(d => d >= cutoff).map(d => byDate[d]);
   const avg4 = recent.length ? Math.round(recent.reduce((s, r) => s + r, 0) / recent.length) : null;
   const pct = base => base ? Math.round(((cur - base) / base) * 100) : 0;
   return { cur, peak, low, avg, avg4,
