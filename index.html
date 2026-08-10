@@ -2225,6 +2225,24 @@ function seedHistoricalPrices() {
   saveData();
 }
 
+// Bad/teaser price-history points to strip from every browser on load (runs each
+// load, not version-gated). Matches by name + date + rent so only the exact
+// bogus point is removed — e.g. Orchard Glen's one-day $2,665 teaser on 6/3.
+const PRICE_HISTORY_PURGE = [
+  {name:'Orchard Glen Apartments', date:'2026-06-03', rent:2665},
+];
+function purgeHistoryPoints() {
+  let changed = false;
+  PRICE_HISTORY_PURGE.forEach(({name, date, rent}) => {
+    const a = apartments.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (!a || !a.price_history) return;
+    const before = a.price_history.length;
+    a.price_history = a.price_history.filter(h => !(h.date === date && h.rent === rent));
+    if (a.price_history.length !== before) changed = true;
+  });
+  if (changed) saveData();
+}
+
 // ═══════════════════════════════════
 // INIT
 // ═══════════════════════════════════
@@ -2234,6 +2252,7 @@ importList(SHORTLIST, 'shortlist');
 importList(CORPUS_LIST, 'corpus');
 importPrices();
 seedHistoricalPrices();
+purgeHistoryPoints();
 updateAmenityChips();
 setTab('shortlist');
 
