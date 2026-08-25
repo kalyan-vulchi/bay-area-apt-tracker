@@ -527,8 +527,11 @@ function score(apt) {
   if (!apt.commute) pts += 7;
   else if (apt.commute <= MAX_COMMUTE) pts += Math.max(0, Math.min(15, Math.round(15 - (apt.commute - 10) * 0.6)));
   if (apt.has_hardwood) pts += 10;
-  // Tour impression of community/apt (0-10), only earned once toured. Brings the scale to a true 100.
-  if (apt.impression) pts += Math.max(0, Math.min(10, apt.impression));
+  // Tour impression of community/apt (0-10). Toured -> use the actual rating; not yet
+  // toured -> a neutral 5/10 (so unvisited listings aren't penalized in the score).
+  // The "Tour X/10" badge is only shown for toured listings, so the 5 never displays.
+  const imp = apt.status === 'toured' ? (apt.impression || 0) : 5;
+  pts += Math.max(0, Math.min(10, imp));
   return { qualifies, missingReq, missingPref, pts: Math.min(100, pts) };
 }
 
