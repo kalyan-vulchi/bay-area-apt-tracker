@@ -1953,6 +1953,12 @@ const SHORTLIST = [
     promo:'Up to 2 Weeks Free on select floor plans',
     plans:[{label:'1A',sqft:540,rent:3198,available:'2026-06-11'},{label:'1A (alt)',sqft:597,rent:3340,available:'2026-06-11'},{label:'1B',sqft:760,rent:3368,available:null},{label:'1C',sqft:780,rent:3301,available:null}],
     notes:'TOURED Jun 2 — excellent apartments, amenities, and neighborhood. Too pricey. AVOID unit 107 (red flag). In-unit W/D confirmed. Central AC. LVP floors. 2-level gated garage. Shea Properties. Reviews: 530+ 5-star Google reviews, safe community, responsive maintenance. Watch out for car break-ins (reported), high move-out charges, and steep rent increases at renewal.' },
+  { name:'The Arches', address:'1235 Wildwood Ave, Sunnyvale, CA 94089',
+    url:'https://www.equityapartments.com/san-francisco-bay/sunnyvale/the-arches-apartments', lat:37.3894509, lng:-121.9891997,
+    rent:3210, sqft:620, available:null, commute:12, commute_off:8, dist_mi:2.5, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null, scrapable:false,
+    promo:null,
+    impression:5,
+    notes:'New corpus candidate (Equity). Very close to office (~2.5 mi, 12 min peak). 1BR from $3,210 (620 sqft), newly-renovated units. PER WEBSITE (verify on tour — online amenity info is often wrong): in-home STACKED washer/dryer, air conditioning (type unlisted), hard-surface flooring, smart-home tech, resident parking (cost TBD), gated, 2 outdoor pools + fitness center. Sunnyvale.' },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -1967,12 +1973,6 @@ const CORPUS_LIST = [
     impression:5,
     notes:'1BR from $3,350 (was $3,755 — significant drop, now within budget). 700 sqft. In-unit W/D + central AC confirmed. Underground garage parking fee TBD. SPECIALS (AvalonBay): (1) HALF A MONTH OFF select homes if you apply by 6/30/2026; (2) $250 security deposit (on approved credit) if you apply by 6/30/2026. Both require a 12+ month lease, no on-site transfers, T&C apply.' },
 
-  { name:'The Arches', address:'1235 Wildwood Ave, Sunnyvale, CA 94089',
-    url:'https://www.equityapartments.com/san-francisco-bay/sunnyvale/the-arches-apartments', lat:37.3894509, lng:-121.9891997,
-    rent:3210, sqft:620, available:null, commute:12, commute_off:8, dist_mi:2.5, has_wd:null, has_ac:null, has_parking:null, has_hardwood:null, scrapable:false,
-    promo:null,
-    impression:5,
-    notes:'New corpus candidate (Equity). Very close to office (~2.5 mi, 12 min peak). 1BR from $3,210 (620 sqft), newly-renovated units. PER WEBSITE (verify on tour — online amenity info is often wrong): in-home STACKED washer/dryer, air conditioning (type unlisted), hard-surface flooring, smart-home tech, resident parking (cost TBD), gated, 2 outdoor pools + fitness center. Sunnyvale.' },
 
 ];
 
@@ -2238,6 +2238,15 @@ function seedHistoricalPrices() {
 const PRICE_HISTORY_PURGE = [
   {name:'Orchard Glen Apartments', date:'2026-06-03', rent:2665},
 ];
+const FORCE_SHORTLIST = ['The Arches'];
+function forceShortlist() {
+  let changed = false;
+  FORCE_SHORTLIST.forEach(name => {
+    const a = apartments.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (a && a.list !== 'shortlist') { a.list = 'shortlist'; changed = true; }
+  });
+  if (changed) saveData();
+}
 function purgeHistoryPoints() {
   let changed = false;
   PRICE_HISTORY_PURGE.forEach(({name, date, rent}) => {
@@ -2260,6 +2269,7 @@ importList(CORPUS_LIST, 'corpus');
 importPrices();
 seedHistoricalPrices();
 purgeHistoryPoints();
+forceShortlist();
 updateAmenityChips();
 setTab('shortlist');
 
