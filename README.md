@@ -41,7 +41,8 @@ On every load, `importList()` and `importPrices()` reconcile the code seed with 
   `address, commute, commute_off, dist_mi, has_wd, has_ac, ac_type, has_parking, has_hardwood, notes, scrapable, impression, parking_fee`.
 - **`PRICE_FIELDS`** — **version-gated**; applied only when code's `PRICE_VERSION` is **greater** than the browser's stored version:
   `rent, sqft, available, plans, promo, url`.
-- **`PRICE_VERSION`** (currently **53**) — an integer. **Bump it by 1 whenever you change any price/promo/url/plans in the code**, or browsers won't pick the change up.
+- **`PRICE_VERSION`** — an integer. **Bump it by 1 whenever you change any price/promo/url/plans in the code**, or browsers won't pick the change up.
+- ⚠️ **To REMOVE a promo (or any PRICE_FIELD), set it to `null` explicitly — never delete the field.** The import only applies a field when it's defined (`if w[f] !== undefined`), so a *missing* promo leaves the browser's stale value in place. Set `promo:null` + bump PRICE_VERSION. (Bit us on River Terrace and Orchard Glen.)
 - **`status`** and **`unavailable`** are **browser-owned**: seeded on new entries, never force-synced, so in-browser toggles persist. `status` only ever advances along a funnel (`not_visited → toured …`), never regresses.
 - **Scrapable listings** (see §6) additionally **force-sync their price fields from code every load** — so their prices always mirror the code.
 
