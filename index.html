@@ -1832,7 +1832,7 @@ const SHORTLIST = [
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
     rent:3264, sqft:700, available:null, commute:24, commute_off:13, dist_mi:8.1, has_wd:true, has_ac:true, ac_type:'split_living', has_parking:true, has_hardwood:true,
-    status:'toured', impression:6,
+    status:'toured', impression:6, promo:null,
     plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
     notes:'TOURED Jun 2 — good apartments but out of budget when all costs factored in. In-unit W/D confirmed. Split AC in living room confirmed. NOISE RISK: units near Lawrence Expressway have traffic noise — request a unit away from it. Assigned + open parking available. Heated saltwater pool. Prometheus.' },
 
@@ -1990,7 +1990,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 97; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 98; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
