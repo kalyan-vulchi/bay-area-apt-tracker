@@ -1831,10 +1831,10 @@ const SHORTLIST = [
 
   { name:'Orchard Glen Apartments', address:'101 Saratoga Ave, Santa Clara, CA 95051',
     url:'https://prometheusapartments.com/ca/santa-clara-apartments/orchard-glen#pricingAndFloorPlanBox', lat:37.3477, lng:-121.9703,
-    rent:3192, sqft:700, available:null, commute:24, commute_off:13, dist_mi:8.1, has_wd:true, has_ac:true, ac_type:'split_living', has_parking:true, has_hardwood:true,
-    status:'toured', impression:6, promo:'Up to 3 Weeks Free Rent',
-    plans:[{label:'Plan 1BR',sqft:700,rent:2665,available:null},{label:'Plan 1CR',sqft:750,rent:2766,available:null}],
-    notes:'TOURED Jun 2 — good apartments but out of budget when all costs factored in. In-unit W/D confirmed. Split AC in living room confirmed. NOISE RISK: units near Lawrence Expressway have traffic noise — request a unit away from it. Assigned + open parking available. Heated saltwater pool. Prometheus.' },
+    rent:3240, sqft:750, available:null, commute:24, commute_off:13, dist_mi:8.1, has_wd:true, has_ac:true, ac_type:'split_living', has_parking:true, has_hardwood:true,
+    status:'applied', impression:6, promo:'4 Weeks Free',
+    plans:[{label:'Plan 1CR (APPLIED)',sqft:750,rent:3240,available:'2026-10-01'}],
+    notes:'✅ APPLIED — 11-month lease starting Oct 1 2026. Plan 1CR, 750 sqft, base rent $3,240, promo 4 WEEKS FREE (~$3,240 - $249/mo amortized over 11mo = ~$2,991 effective yr-1). In-unit W/D + split AC (living room) + hardwood confirmed on tour. NOISE RISK: units near Lawrence Expressway have traffic noise — confirm assigned unit is away from it. Assigned + open parking. Heated saltwater pool. Prometheus (watch year-2 renewal bump). TOURED Jun 2 — good apartments.' },
 
   { name:'Magnolia Square', address:'107 S Mary Ave, Sunnyvale, CA 94086',
     url:'https://www.essexapartmenthomes.com/apartments/sunnyvale/magnolia-square/floor-plans-and-pricing', lat:37.381926, lng:-122.0449243,
@@ -1991,7 +1991,7 @@ const SCRAPE_FIELDS = ['rent','sqft','available','promo','plans'];
 // Version-gated fields (prices + listing links) — only applied when PRICE_VERSION is newer than
 // stored version, so your browser edits to these persist until the next version bump.
 const PRICE_FIELDS  = ['rent','sqft','available','plans','promo','url'];
-const PRICE_VERSION = 108; // increment this (in code + cron PRs) to push new prices/links to all browsers
+const PRICE_VERSION = 109; // increment this (in code + cron PRs) to push new prices/links to all browsers
 
 function importList(source, listType) {
   let changed = false;
